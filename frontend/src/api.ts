@@ -50,4 +50,6 @@ export const api = {
     if (fileType) fd.append("file_type", fileType);
     return req<DocumentRow>("/api/admin/documents", { method: "POST", body: fd });
   },
+  retryDocument: (id: number) =>
+    req<{ id: number; filename: string; status: string }>(`/api/admin/documents/${id}/retry`, { method: "POST" }),
 };
