@@ -1,0 +1,26 @@
+{
+  "name": "mih-backend",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "bun run --watch src/index.ts",
+    "start": "bun run src/index.ts",
+    "test": "bun test --preload ./tests/setup.ts",
+    "seed": "bun run scripts/seed.ts"
+  },
+  "dependencies": {
+    "express": "^5.1.0",
+    "multer": "^1.4.5-lts.1",
+    "openai": "^4.67.0",
+    "pg": "^8.13.0"
+  },
+  "devDependencies": {
+    "@types/bun": "^1.1.0",
+    "@types/express": "^5.0.0",
+    "@types/multer": "^1.4.12",
+    "@types/node": "^22.7.0",
+    "@types/pg": "^8.11.10",
+    "@types/supertest": "^6.0.2",
+    "supertest": "^7.0.0"
+  }
+}
