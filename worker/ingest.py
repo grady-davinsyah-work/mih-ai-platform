@@ -39,6 +39,7 @@ def scan_dir(conn, dirpath: str) -> int:
         sha = sha256_file(path)
         if ensure_raw_document(conn, path.name, str(path), sha, classify_file(path.name)):
             added += 1
+    conn.commit()
     return added
 
 
@@ -72,6 +73,7 @@ def process_pending(conn, limit: int = 10) -> int:
         except Exception as e:
             set_status(conn, doc["id"], "failed", str(e))
             print(f"fail doc={doc['id']} err={e}")
+        conn.commit()
     return done
 
 
