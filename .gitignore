@@ -14,6 +14,7 @@ __pycache__/
 
 # Data (uploads & raw files — tidak ikut git)
 data/
+.test-data/
 
 # OS
 .DS_Store

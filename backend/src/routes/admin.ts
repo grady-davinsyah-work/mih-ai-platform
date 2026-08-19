@@ -1,8 +1,13 @@
 import { Router } from "express";
+import { randomBytes, createHash } from "node:crypto";
+import { promises as fs } from "node:fs";
+import path from "node:path";
+import multer from "multer";
 import { pool } from "../db";
 import { hashPassword } from "../lib/passwords";
 import { generateToken, hashToken } from "../lib/token";
 import { requireLogin, requireAdmin } from "../middleware/sessionAuth";
+import { config } from "../config";
 
 const router = Router();
 
@@ -63,6 +68,68 @@ router.get("/tokens", requireAdmin, async (_req, res) => {
 router.post("/tokens/:id/revoke", requireAdmin, async (req, res) => {
   await pool.query("UPDATE api_tokens SET revoked_at = now() WHERE id=$1", [Number(req.params.id)]);
   res.json({ ok: true });
+});
+
+router.get("/usage-logs", requireAdmin, async (_req, res) => {
+  const { rows } = await pool.query(
+    `SELECT l.id, l.created_at, l.question, l.latency_ms, t.name AS token_name
+       FROM usage_logs l JOIN api_tokens t ON t.id = l.token_id
+      ORDER BY l.id DESC LIMIT 200`
+  );
+  res.json(rows);
+});
+
+const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 50 * 1024 * 1024 } });
+
+function sha256(buf: Buffer): string {
+  return createHash("sha256").update(buf).digest("hex");
+}
+
+// ---- documents ----
+router.get("/documents", requireLogin, async (_req, res) => {
+  const { rows } = await pool.query(
+    `SELECT id, filename, file_type, file_extension, status, error_message, chunk_count,
+            created_at, updated_at FROM documents ORDER BY id DESC`
+  );
+  res.json(rows);
+});
+
+router.post("/documents", requireLogin, upload.single("file"), async (req, res) => {
+  if (!req.file) return res.status(400).json({ error: "file wajib" });
+  const buf = req.file.buffer;
+  const ext = path.extname(req.file.originalname).toLowerCase().slice(1);
+  if (!["pptx", "pdf", "docx"].includes(ext))
+    return res.status(400).json({ error: "hanya pptx/pdf/docx" });
+
+  const hash = sha256(buf);
+  const dup = await pool.query("SELECT 1 FROM documents WHERE sha256=$1", [hash]);
+  if ((dup.rowCount ?? 0) > 0)
+    return res.status(409).json({ error: "dokumen sudah ada (duplikat)" });
+
+  const fileType = req.body.file_type || (ext === "pptx" ? "paparan" : "laporan");
+  const dir = path.join(config.dataDir, "uploaded");
+  await fs.mkdir(dir, { recursive: true });
+  const safeName = `${Date.now()}-${req.file.originalname.replace(/[^\w.\-]+/g, "_")}`;
+  const filePath = path.join(dir, safeName);
+  await fs.writeFile(filePath, buf);
+
+  const { rows } = await pool.query(
+    `INSERT INTO documents (filename, file_type, file_extension, sha256, file_path, status)
+     VALUES ($1,$2,$3,$4,$5,'pending') RETURNING id, filename, file_type, status`,
+    [req.file.originalname, fileType, ext, hash, filePath]
+  );
+  res.status(201).json(rows[0]);
+});
+
+router.post("/documents/:id/retry", requireLogin, async (req, res) => {
+  const id = Number(req.params.id);
+  const { rows } = await pool.query(
+    `UPDATE documents SET status='pending', error_message=NULL, updated_at=now()
+      WHERE id=$1 AND status='failed' RETURNING id, filename, status`,
+    [id]
+  );
+  if (rows.length === 0) return res.status(400).json({ error: "hanya dokumen gagal yang bisa diulang" });
+  res.json(rows[0]);
 });
 
 export default router;

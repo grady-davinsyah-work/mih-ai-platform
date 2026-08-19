@@ -33,7 +33,6 @@ beforeAll(async () => {
 
 afterAll(async () => {
   await truncateAll();
-  await testDb.end();
 });
 
 test("valid token passes", async () => {
