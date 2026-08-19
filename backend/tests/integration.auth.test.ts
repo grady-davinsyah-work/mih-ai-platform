@@ -52,3 +52,17 @@ test("revoked token returns 403", async () => {
   const res = await request(app).post("/api/ping").set("Authorization", "Bearer mih_ok");
   expect(res.status).toBe(403);
 });
+
+test("login + me round-trip", async () => {
+  const login = await request(app).post("/api/auth/login").send({ email: "a@b.c", password: "x" });
+  expect(login.status).toBe(200);
+  const cookie = login.headers["set-cookie"][0].split(";")[0];
+  const me = await request(app).get("/api/auth/me").set("Cookie", cookie);
+  expect(me.status).toBe(200);
+  expect(me.body.user.email).toBe("a@b.c");
+});
+
+test("wrong password returns 401", async () => {
+  const res = await request(app).post("/api/auth/login").send({ email: "a@b.c", password: "salah" });
+  expect(res.status).toBe(401);
+});
