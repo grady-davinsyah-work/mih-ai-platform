@@ -41,3 +41,18 @@ def test_chunk_indices_sequential():
                   page_or_slide=2, section_title="y")
     chunks = chunk_segments([seg])
     assert [c.chunk_index for c in chunks] == list(range(len(chunks)))
+
+
+def test_hard_cap_not_exceeded_by_tail_plus_sentence():
+    # Filler pendek membangun buffer besar; tail overlap yang dibawa + satu
+    # kalimat panjang harus tetap di bawah batas keras 800 token.
+    filler = "Ini adalah kalimat pengisi pendek."
+    long_sent = " ".join(["kata"] * 760)  # tanpa tanda baca akhir → satu kalimat
+    assert token_count(long_sent) <= 800  # long sentence alone muat
+    text = " ".join([filler] * 85) + " " + long_sent
+    seg = Segment(text=text, page_or_slide=1, section_title="x")
+    chunks = chunk_segments([seg])
+    assert chunks
+    for c in chunks:
+        assert token_count(c.text) <= 800, \
+            f"chunk {c.chunk_index} melebihi 800 token: {token_count(c.text)}"

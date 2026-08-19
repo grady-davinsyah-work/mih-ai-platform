@@ -36,6 +36,7 @@ def split_sentences(text: str) -> list[str]:
     return parts or ([text] if text.strip() else [])
 
 
+# min_tokens sengaja lunak; max_tokens adalah batas keras.
 def chunk_segments(segments: list[Segment], *, min_tokens: int = 300,
                    max_tokens: int = 800, overlap_ratio: float = 0.15) -> list[Chunk]:
     chunks: list[Chunk] = []
@@ -61,13 +62,16 @@ def chunk_segments(segments: list[Segment], *, min_tokens: int = 300,
             if token_count(cand2) <= max_tokens:
                 buffer = cand2
                 tail = ""
+            elif token_count(sent) <= max_tokens:
+                # tail + sent melewati batas keras, tapi sent sendiri muat → buang tail
+                buffer = sent
+                tail = ""
             else:
-                # kalimat tunggal melebihi batas → simpan apa adanya
-                chunks.append(Chunk(text=cand2, page_or_slide=seg.page_or_slide,
+                # kalimat tunggal melebihi batas keras → simpan apa adanya (fallback terdokumentasi)
+                chunks.append(Chunk(text=sent, page_or_slide=seg.page_or_slide,
                                     section_title=seg.section_title, chunk_index=idx))
                 idx += 1
                 tail = ""
-                buffer = ""
         if buffer:
             chunks.append(Chunk(text=buffer, page_or_slide=seg.page_or_slide,
                                 section_title=seg.section_title, chunk_index=idx))
