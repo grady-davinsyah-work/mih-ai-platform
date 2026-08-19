@@ -1,0 +1,20 @@
+# Env & secrets
+.env
+.env.local
+
+# Node
+node_modules/
+dist/
+*.log
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+
+# Data (uploads & raw files — tidak ikut git)
+data/
+
+# OS
+.DS_Store
+Thumbs.db
