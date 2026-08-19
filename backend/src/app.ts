@@ -15,7 +15,11 @@ export function createApp() {
   // Express 5 meneruskan error dari handler async ke middleware berikut
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
     console.error(err);
-    res.status(500).json({ error: "internal server error" });
+    const status =
+      err.status ??
+      err.statusCode ??
+      (err.name === "MulterError" && err.code === "LIMIT_FILE_SIZE" ? 413 : 500);
+    res.status(status).json({ error: "internal server error" });
   });
   return app;
 }

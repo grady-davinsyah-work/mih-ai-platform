@@ -13,6 +13,7 @@ export default function Documents() {
   const [file, setFile] = useState<File | null>(null);
   const [fileType, setFileType] = useState("");
   const [error, setError] = useState("");
+  const [busy, setBusy] = useState(false);
 
   async function load() {
     try {
@@ -27,6 +28,7 @@ export default function Documents() {
     e.preventDefault();
     if (!file) return;
     setError("");
+    setBusy(true);
     try {
       await api.uploadDocument(file, fileType || undefined);
       setFile(null);
@@ -34,15 +36,21 @@ export default function Documents() {
       load();
     } catch (err: any) {
       setError(err.message);
+    } finally {
+      setBusy(false);
     }
   }
 
   async function retry(id: number) {
+    setError("");
+    setBusy(true);
     try {
       await api.retryDocument(id);
       load();
     } catch (err: any) {
       setError(err.message);
+    } finally {
+      setBusy(false);
     }
   }
 
@@ -60,7 +68,7 @@ export default function Documents() {
             <option value="laporan">Laporan</option>
             <option value="lainnya">Lainnya</option>
           </select>
-          <button className="rounded bg-blue-600 px-4 py-1 text-white hover:bg-blue-700" disabled={!file}>Upload</button>
+          <button className="rounded bg-blue-600 px-4 py-1 text-white hover:bg-blue-700" disabled={!file || busy}>Upload</button>
         </div>
       </form>
 
@@ -73,10 +81,13 @@ export default function Documents() {
             </div>
             <div className="mt-1 text-sm text-slate-600">
               {d.file_type} · {d.chunk_count} chunk
-              {d.error_message && <span className="ml-2 text-red-600">{d.error_message}</span>}
+              {d.error_message && (d.status === "failed"
+                ? <span className="ml-2 text-red-600">{d.error_message}</span>
+                : <span className="ml-2 text-amber-600">{d.error_message}</span>)}
               {d.status === "failed" && (
                 <button
                   className="ml-2 rounded bg-blue-600 px-2 py-0.5 text-xs text-white hover:bg-blue-700"
+                  disabled={busy}
                   onClick={() => retry(d.id)}
                 >Ulangi</button>
               )}

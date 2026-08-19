@@ -55,6 +55,8 @@ def process_document(conn, doc) -> int:
     if not chunks:
         raise ValueError("tidak ada teks terekstrak — kemungkinan hasil scan, perlu OCR")
     vectors = embed_texts([c.text for c in chunks])
+    if len(vectors) != len(chunks):
+        raise ValueError(f"jumlah embedding {len(vectors)} != jumlah chunk {len(chunks)}")
     for c, v in zip(chunks, vectors):
         insert_chunk(conn, doc_id, c, v)
     mark_outdated_same_filename(conn, doc["filename"], doc_id)
@@ -71,6 +73,7 @@ def process_pending(conn, limit: int = 10) -> int:
             print(f"ok doc={doc['id']} chunks={n} file={doc['filename']}")
             done += 1
         except Exception as e:
+            conn.rollback()
             set_status(conn, doc["id"], "failed", str(e))
             print(f"fail doc={doc['id']} err={e}")
         conn.commit()

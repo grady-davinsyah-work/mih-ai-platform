@@ -27,7 +27,7 @@ router.post("/users", requireAdmin, async (req, res) => {
     const { rows } = await pool.query(
       `INSERT INTO users (name, email, unit_kerja, password_hash, is_admin)
        VALUES ($1,$2,$3,$4,$5) RETURNING id, name, email, unit_kerja, is_admin`,
-      [String(name), String(email).toLowerCase(), String(unit_kerja ?? ""), hashPassword(String(password)), Boolean(is_admin)]
+      [String(name), String(email).toLowerCase(), String(unit_kerja ?? ""), hashPassword(String(password)), is_admin === true || is_admin === "true"]
     );
     res.status(201).json(rows[0]);
   } catch (e: any) {
@@ -39,6 +39,7 @@ router.post("/users", requireAdmin, async (req, res) => {
 // ---- api tokens ----
 router.post("/users/:id/tokens", requireAdmin, async (req, res) => {
   const userId = Number(req.params.id);
+  if (!Number.isInteger(userId)) return res.status(400).json({ error: "id tidak valid" });
   const token = generateToken();
   await pool.query(
     `INSERT INTO api_tokens (user_id, name, token_hash, scope, daily_limit, expires_at)
@@ -66,7 +67,9 @@ router.get("/tokens", requireAdmin, async (_req, res) => {
 });
 
 router.post("/tokens/:id/revoke", requireAdmin, async (req, res) => {
-  await pool.query("UPDATE api_tokens SET revoked_at = now() WHERE id=$1", [Number(req.params.id)]);
+  const id = Number(req.params.id);
+  if (!Number.isInteger(id)) return res.status(400).json({ error: "id tidak valid" });
+  await pool.query("UPDATE api_tokens SET revoked_at = now() WHERE id=$1", [id]);
   res.json({ ok: true });
 });
 
@@ -123,6 +126,7 @@ router.post("/documents", requireLogin, upload.single("file"), async (req, res) 
 
 router.post("/documents/:id/retry", requireLogin, async (req, res) => {
   const id = Number(req.params.id);
+  if (!Number.isInteger(id)) return res.status(400).json({ error: "id tidak valid" });
   const { rows } = await pool.query(
     `UPDATE documents SET status='pending', error_message=NULL, updated_at=now()
       WHERE id=$1 AND status='failed' RETURNING id, filename, status`,

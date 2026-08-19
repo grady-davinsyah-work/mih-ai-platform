@@ -10,6 +10,7 @@ export default function Admin() {
   const [tokenUser, setTokenUser] = useState(0);
   const [tokenName, setTokenName] = useState("");
   const [freshToken, setFreshToken] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
 
   async function load() {
     try {
@@ -24,21 +25,36 @@ export default function Admin() {
 
   async function createUser(e: React.FormEvent) {
     e.preventDefault();
-    await api.createUser(newUser);
-    setNewUser({ name: "", email: "", unit_kerja: "", password: "", is_admin: false });
-    load();
+    setBusy(true);
+    try {
+      await api.createUser(newUser);
+      setNewUser({ name: "", email: "", unit_kerja: "", password: "", is_admin: false });
+      load();
+    } finally {
+      setBusy(false);
+    }
   }
 
   async function createToken() {
-    const r = await api.createToken(tokenUser, { name: tokenName || undefined });
-    setFreshToken(r.token);
-    setTokenName("");
-    load();
+    setBusy(true);
+    try {
+      const r = await api.createToken(tokenUser, { name: tokenName || undefined });
+      setFreshToken(r.token);
+      setTokenName("");
+      load();
+    } finally {
+      setBusy(false);
+    }
   }
 
   async function revoke(id: number) {
-    await api.revokeToken(id);
-    load();
+    setBusy(true);
+    try {
+      await api.revokeToken(id);
+      load();
+    } finally {
+      setBusy(false);
+    }
   }
 
   return (
@@ -62,7 +78,7 @@ export default function Admin() {
               onChange={(e) => setNewUser({ ...newUser, is_admin: e.target.checked })} />
             Admin
           </label>
-          <button className="rounded bg-blue-600 px-4 py-2 text-white hover:bg-blue-700">Simpan</button>
+          <button className="rounded bg-blue-600 px-4 py-2 text-white hover:bg-blue-700" disabled={busy}>Simpan</button>
         </form>
       </section>
 
@@ -77,7 +93,7 @@ export default function Admin() {
           </label>
           <input className="rounded border px-3 py-1" placeholder="Nama token" value={tokenName}
             onChange={(e) => setTokenName(e.target.value)} />
-          <button className="rounded bg-blue-600 px-4 py-1 text-white hover:bg-blue-700" onClick={createToken}>Generate</button>
+          <button className="rounded bg-blue-600 px-4 py-1 text-white hover:bg-blue-700" disabled={busy} onClick={createToken}>Generate</button>
         </div>
         {freshToken && (
           <div className="mt-3 rounded border-2 border-amber-400 bg-amber-50 p-3 text-sm">
@@ -97,7 +113,7 @@ export default function Admin() {
                 <td>{t.name}</td><td>{t.email}</td><td>{t.scope}</td>
                 <td>{t.daily_limit}</td>
                 <td>{t.revoked_at ? <span className="text-red-600">revoked</span> : <span className="text-green-600">aktif</span>}</td>
-                <td>{!t.revoked_at && <button className="text-red-600 underline" onClick={() => revoke(t.id)}>Revoke</button>}</td>
+                <td>{!t.revoked_at && <button className="text-red-600 underline" disabled={busy} onClick={() => revoke(t.id)}>Revoke</button>}</td>
               </tr>
             ))}
           </tbody>
