@@ -1,0 +1,52 @@
+services:
+  db:
+    image: pgvector/pgvector:pg16
+    environment:
+      POSTGRES_USER: mih
+      POSTGRES_PASSWORD: mih
+      POSTGRES_DB: mih
+    volumes:
+      - db_data:/var/lib/postgresql/data
+      - ./db/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U mih -d mih"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+
+  backend:
+    build: ./backend
+    env_file: .env
+    environment:
+      DATABASE_URL: postgres://mih:mih@db:5432/mih
+      DATA_DIR: /data
+    volumes:
+      - ./data:/data
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "3000:3000"
+
+  worker:
+    build: ./worker
+    env_file: .env
+    environment:
+      DATABASE_URL: postgres://mih:mih@db:5432/mih
+      DATA_DIR: /data
+      RAW_DIR: /data/raw
+    volumes:
+      - ./data:/data
+    depends_on:
+      db:
+        condition: service_healthy
+
+  frontend:
+    build: ./frontend
+    ports:
+      - "8080:80"
+    depends_on:
+      - backend
+
+volumes:
+  db_data:
