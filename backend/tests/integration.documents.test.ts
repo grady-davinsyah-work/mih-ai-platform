@@ -21,7 +21,8 @@ beforeAll(async () => {
 
 afterAll(async () => {
   await truncateAll();
-  await testDb.end();
+  // Catatan: testDb adalah pool singleton (helpers.ts) yang dipakai bersama file test lain
+  // dalam worker yang sama — jangan dipanggil testDb.end() di sini.
 });
 
 test("upload creates pending document", async () => {
