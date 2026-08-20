@@ -3,6 +3,12 @@
 # Dipanggil oleh workflow Deploy (GitHub Actions, self-hosted runner) atau manual.
 set -euo pipefail
 
+# Proxy korporat wajib untuk semua unduhan saat build (bun/pip/npm). Server tidak
+# punya internet langsung; tanpa proxy, RUN steps hang selamanya menunggu koneksi.
+export HTTP_PROXY=http://proxy.bappenas.go.id:8080
+export HTTPS_PROXY=http://proxy.bappenas.go.id:8080
+export NO_PROXY=localhost,127.0.0.1
+
 # Direktori repo deploy di server (clone git dari GitHub). Jangan pernah taruh .env di git.
 DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$DIR"
@@ -16,7 +22,13 @@ build_service() {
   local svc="$1"
   for i in 1 2 3 4 5; do
     echo "=== docker compose build $svc (attempt $i) ==="
-    if docker compose build "$svc"; then
+    # --build-arg proxy: BuildKit auto-inject ini ke env RUN steps, jadi unduhan
+    # bun/pip/npm pasti lewat proxy walau env client kebetulan tidak ter-set.
+    if docker compose build \
+        --build-arg HTTP_PROXY=http://proxy.bappenas.go.id:8080 \
+        --build-arg HTTPS_PROXY=http://proxy.bappenas.go.id:8080 \
+        --build-arg NO_PROXY=localhost,127.0.0.1 \
+        "$svc"; then
       return 0
     fi
     echo "build $svc gagal attempt $i, coba lagi dalam 15s..."
