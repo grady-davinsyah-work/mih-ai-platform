@@ -9,4 +9,6 @@ COPY tiktoken_cache/ /app/tiktoken_cache/
 RUN pip install --no-cache-dir --timeout 60 --retries 5 -r requirements.txt \
  && python -c "import tiktoken; tiktoken.get_encoding('cl100k_base')"
 COPY . .
-CMD ["python", "ingest.py", "watch"]
+# -u: unbuffered stdout — kalau tidak, print() tersangkut di buffer pipe
+# container (8KB) dan log worker tampak kosong sampai buffer penuh.
+CMD ["python", "-u", "ingest.py", "watch"]
