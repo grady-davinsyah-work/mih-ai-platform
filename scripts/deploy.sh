@@ -46,8 +46,21 @@ echo "=== docker compose up -d --no-build ==="
 docker compose up -d --no-build
 
 echo "=== verifikasi portal ==="
-curl -sf --noproxy "*" -o /dev/null -w "portal HTTP %{http_code}\n" http://localhost:8080/ \
-  || { echo "portal tidak responsif di localhost:8080" >&2; exit 1; }
+# Nginx butuh beberapa detik untuk bind port setelah container start.
+# Jangan sekali coba (bisa HTTP 000); tunggu sampai HTTP 200, maks 60s.
+ok=""
+for i in $(seq 1 20); do
+  if curl -sf --noproxy "*" -o /dev/null http://localhost:8080/; then
+    ok=1
+    echo "portal HTTP 200 (detik ke-$((i * 3)))"
+    break
+  fi
+  sleep 3
+done
+if [ -z "$ok" ]; then
+  echo "portal tidak responsif di localhost:8080 dalam 60s" >&2
+  exit 1
+fi
 
 echo "=== status container ==="
 docker compose ps
