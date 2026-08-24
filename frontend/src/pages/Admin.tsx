@@ -1,5 +1,15 @@
 import { useEffect, useState } from "react";
+import type { FormEvent } from "react";
 import { api, type Token, type User } from "../api";
+import {
+  Button,
+  Card,
+  ErrorBanner,
+  Field,
+  Input,
+  PageHeader,
+  Select,
+} from "../components/ui";
 
 export default function Admin() {
   const [users, setUsers] = useState<User[]>([]);
@@ -23,7 +33,7 @@ export default function Admin() {
   }
   useEffect(() => { load(); }, []);
 
-  async function createUser(e: React.FormEvent) {
+  async function createUser(e: FormEvent) {
     e.preventDefault();
     setBusy(true);
     try {
@@ -58,86 +68,141 @@ export default function Admin() {
   }
 
   return (
-    <div className="mx-auto max-w-5xl space-y-8 p-6">
-      <h1 className="text-2xl font-semibold">Admin</h1>
-      {error && <p className="rounded bg-red-100 px-3 py-2 text-sm text-red-700">{error}</p>}
+    <div>
+      <PageHeader eyebrow="KONTROL AKSES" title="Admin" />
 
-      <section className="rounded border bg-white p-4">
-        <h2 className="text-lg font-semibold">Buat user</h2>
-        <form onSubmit={createUser} className="mt-3 grid gap-3 sm:grid-cols-2">
-          <input className="rounded border px-3 py-2" placeholder="Nama" value={newUser.name}
-            onChange={(e) => setNewUser({ ...newUser, name: e.target.value })} required />
-          <input className="rounded border px-3 py-2" type="email" placeholder="Email" value={newUser.email}
-            onChange={(e) => setNewUser({ ...newUser, email: e.target.value })} required />
-          <input className="rounded border px-3 py-2" placeholder="Unit kerja" value={newUser.unit_kerja}
-            onChange={(e) => setNewUser({ ...newUser, unit_kerja: e.target.value })} />
-          <input className="rounded border px-3 py-2" type="password" placeholder="Password" value={newUser.password}
-            onChange={(e) => setNewUser({ ...newUser, password: e.target.value })} required />
-          <label className="flex items-center gap-2 text-sm">
-            <input type="checkbox" checked={newUser.is_admin}
-              onChange={(e) => setNewUser({ ...newUser, is_admin: e.target.checked })} />
-            Admin
-          </label>
-          <button className="rounded bg-blue-600 px-4 py-2 text-white hover:bg-blue-700" disabled={busy}>Simpan</button>
-        </form>
-      </section>
+      <div className="space-y-8">
+        {error && <ErrorBanner>{error}</ErrorBanner>}
 
-      <section className="rounded border bg-white p-4">
-        <h2 className="text-lg font-semibold">Generate token</h2>
-        <div className="mt-3 flex flex-wrap items-end gap-3">
-          <label className="text-sm">
-            User
-            <select className="ml-2 rounded border px-2 py-1" value={tokenUser} onChange={(e) => setTokenUser(Number(e.target.value))}>
-              {users.map((u) => <option key={u.id} value={u.id}>{u.email}</option>)}
-            </select>
-          </label>
-          <input className="rounded border px-3 py-1" placeholder="Nama token" value={tokenName}
-            onChange={(e) => setTokenName(e.target.value)} />
-          <button className="rounded bg-blue-600 px-4 py-1 text-white hover:bg-blue-700" disabled={busy} onClick={createToken}>Generate</button>
-        </div>
-        {freshToken && (
-          <div className="mt-3 rounded border-2 border-amber-400 bg-amber-50 p-3 text-sm">
-            <p className="font-semibold">Simpan token ini — tidak akan tampil lagi:</p>
-            <code className="mt-1 block break-all">{freshToken}</code>
+        {/* Buat user */}
+        <Card interactive={false} className="p-5">
+          <h2 className="text-sm font-extrabold text-slate-600">Buat user</h2>
+          <form onSubmit={createUser} className="mt-4 grid gap-3 sm:grid-cols-2">
+            <Field label="Nama">
+              <Input placeholder="Nama" value={newUser.name}
+                onChange={(e) => setNewUser({ ...newUser, name: e.target.value })} required />
+            </Field>
+            <Field label="Email">
+              <Input type="email" placeholder="Email" value={newUser.email}
+                onChange={(e) => setNewUser({ ...newUser, email: e.target.value })} required />
+            </Field>
+            <Field label="Unit kerja">
+              <Input placeholder="Unit kerja" value={newUser.unit_kerja}
+                onChange={(e) => setNewUser({ ...newUser, unit_kerja: e.target.value })} />
+            </Field>
+            <Field label="Password">
+              <Input type="password" placeholder="Password" value={newUser.password}
+                onChange={(e) => setNewUser({ ...newUser, password: e.target.value })} required />
+            </Field>
+            <label className="flex h-full items-end gap-2 text-sm text-slate-700">
+              <input type="checkbox" className="accent-blue-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-900"
+                checked={newUser.is_admin}
+                onChange={(e) => setNewUser({ ...newUser, is_admin: e.target.checked })} />
+              Admin
+            </label>
+            <div className="flex h-full items-end">
+              <Button variant="primary" type="submit" disabled={busy}>Simpan</Button>
+            </div>
+          </form>
+        </Card>
+
+        {/* Generate token */}
+        <Card interactive={false} className="p-5">
+          <h2 className="text-sm font-extrabold text-slate-600">Generate token</h2>
+          <div className="mt-4 grid items-end gap-3 sm:grid-cols-[minmax(0,16rem)_minmax(0,1fr)_auto]">
+            <Field label="User">
+              <Select value={tokenUser} onChange={(e) => setTokenUser(Number(e.target.value))}>
+                {users.map((u) => <option key={u.id} value={u.id}>{u.email}</option>)}
+              </Select>
+            </Field>
+            <Field label="Nama token">
+              <Input placeholder="Nama token" value={tokenName}
+                onChange={(e) => setTokenName(e.target.value)} />
+            </Field>
+            <Button variant="primary" onClick={createToken} disabled={busy}>Generate</Button>
           </div>
-        )}
-      </section>
+          {freshToken && (
+            <div className="mt-4 border border-amber-300 bg-amber-50 p-3 text-sm">
+              <p className="font-medium text-slate-700">Simpan token ini — tidak akan tampil lagi:</p>
+              <code className="mt-1 block break-all font-sans text-slate-800">{freshToken}</code>
+            </div>
+          )}
+        </Card>
 
-      <section className="rounded border bg-white p-4">
-        <h2 className="text-lg font-semibold">Token aktif</h2>
-        <table className="mt-2 w-full text-sm">
-          <thead><tr className="border-b text-left"><th>Nama</th><th>User</th><th>Scope</th><th>Batas/hari</th><th>Status</th><th /></tr></thead>
-          <tbody>
-            {tokens.map((t) => (
-              <tr key={t.id} className="border-b">
-                <td>{t.name}</td><td>{t.email}</td><td>{t.scope}</td>
-                <td>{t.daily_limit}</td>
-                <td>{t.revoked_at ? <span className="text-red-600">revoked</span> : <span className="text-green-600">aktif</span>}</td>
-                <td>{!t.revoked_at && <button className="text-red-600 underline" disabled={busy} onClick={() => revoke(t.id)}>Revoke</button>}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </section>
-
-      <section className="rounded border bg-white p-4">
-        <h2 className="text-lg font-semibold">Log pemakaian</h2>
-        <div className="mt-2 max-h-96 overflow-auto">
-          <table className="w-full text-sm">
-            <thead><tr className="border-b text-left"><th>Waktu</th><th>Token</th><th>Pertanyaan</th><th>Latensi</th></tr></thead>
-            <tbody>
-              {logs.map((l) => (
-                <tr key={l.id} className="border-b">
-                  <td className="whitespace-nowrap">{new Date(l.created_at).toLocaleString()}</td>
-                  <td>{l.token_name}</td>
-                  <td>{l.question}</td>
-                  <td>{l.latency_ms}ms</td>
+        {/* Token aktif */}
+        <Card interactive={false} className="p-5">
+          <h2 className="text-sm font-extrabold text-slate-600">Token aktif</h2>
+          <div className="mt-3 overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-slate-200 bg-slate-100 text-left">
+                  <th className="px-3 py-2 text-xs font-extrabold uppercase text-slate-600">Nama</th>
+                  <th className="px-3 py-2 text-xs font-extrabold uppercase text-slate-600">User</th>
+                  <th className="px-3 py-2 text-xs font-extrabold uppercase text-slate-600">Scope</th>
+                  <th className="px-3 py-2 text-xs font-extrabold uppercase text-slate-600">Batas/hari</th>
+                  <th className="px-3 py-2 text-xs font-extrabold uppercase text-slate-600">Status</th>
+                  <th className="px-3 py-2 text-right text-xs font-extrabold uppercase text-slate-600">Aksi</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </section>
+              </thead>
+              <tbody>
+                {tokens.map((t) => (
+                  <tr key={t.id} className="border-b border-slate-200 last:border-0">
+                    <td className="px-3 py-2 text-slate-700">{t.name}</td>
+                    <td className="px-3 py-2 text-slate-700">{t.email}</td>
+                    <td className="px-3 py-2 text-xs text-slate-600">{t.scope}</td>
+                    <td className="px-3 py-2 text-xs text-slate-600">{t.daily_limit}</td>
+                    <td className="px-3 py-2">
+                      {t.revoked_at
+                        ? <span className="text-xs font-semibold text-red-600">revoked</span>
+                        : <span className="text-xs font-semibold text-emerald-600">aktif</span>}
+                    </td>
+                    <td className="px-3 py-2 text-right">
+                      {!t.revoked_at && (
+                        <button
+                          className="text-xs font-bold text-red-600 underline underline-offset-2 hover:text-red-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-600 disabled:cursor-not-allowed disabled:opacity-50"
+                          disabled={busy}
+                          onClick={() => revoke(t.id)}
+                        >
+                          Revoke
+                        </button>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </Card>
+
+        {/* Log pemakaian */}
+        <Card interactive={false} className="p-5">
+          <h2 className="text-sm font-extrabold text-slate-600">Log pemakaian</h2>
+          <div className="mt-3 max-h-96 overflow-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-slate-200 bg-slate-100 text-left">
+                  <th className="px-3 py-2 text-xs font-extrabold uppercase text-slate-600">Waktu</th>
+                  <th className="px-3 py-2 text-xs font-extrabold uppercase text-slate-600">Token</th>
+                  <th className="px-3 py-2 text-xs font-extrabold uppercase text-slate-600">Pertanyaan</th>
+                  <th className="px-3 py-2 text-xs font-extrabold uppercase text-slate-600">Latensi</th>
+                </tr>
+              </thead>
+              <tbody>
+                {logs.map((l) => (
+                  <tr key={l.id} className="border-b border-slate-200 last:border-0">
+                    <td className="whitespace-nowrap px-3 py-2 text-xs text-slate-600">
+                      {new Date(l.created_at).toLocaleString()}
+                    </td>
+                    <td className="px-3 py-2 text-xs text-slate-600">{l.token_name}</td>
+                    <td className="px-3 py-2 text-slate-700">{l.question}</td>
+                    <td className="px-3 py-2 text-xs text-slate-600">{l.latency_ms}ms</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </Card>
+      </div>
     </div>
   );
 }

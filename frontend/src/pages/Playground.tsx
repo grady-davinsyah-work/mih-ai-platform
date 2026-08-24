@@ -1,5 +1,14 @@
 import { useState } from "react";
 import { api, type AskResult } from "../api";
+import {
+  Button,
+  Card,
+  CitationPin,
+  ErrorBanner,
+  Field,
+  PageHeader,
+  Textarea,
+} from "../components/ui";
 
 export default function Playground() {
   const [question, setQuestion] = useState("");
@@ -21,43 +30,113 @@ export default function Playground() {
   }
 
   return (
-    <div className="mx-auto max-w-3xl p-6">
-      <h1 className="mb-4 text-2xl font-semibold">Tanya-jawab dokumen</h1>
-      <textarea
-        className="w-full rounded border px-3 py-2"
-        rows={4}
-        placeholder="Tulis pertanyaan tentang dokumen kedeputian…"
-        value={question}
-        onChange={(e) => setQuestion(e.target.value)}
-      />
-      <button
-        className="mt-2 rounded bg-blue-600 px-4 py-2 text-white hover:bg-blue-700 disabled:opacity-50"
-        onClick={ask}
-        disabled={loading}
-      >
-        {loading ? "Memproses…" : "Tanya"}
-      </button>
-      {error && <p className="mt-3 rounded bg-red-100 px-3 py-2 text-sm text-red-700">{error}</p>}
-      {result && (
-        <div className="mt-6">
-          <h2 className="text-lg font-semibold">Jawaban</h2>
-          <p className="mt-2 whitespace-pre-wrap rounded border bg-white p-4">{result.answer}</p>
-          {result.citations.length > 0 && (
+    <>
+      {/* Subtle fade-in for the survey report; honours reduced motion. */}
+      <style>{`
+        @keyframes survey-fade {
+          from { opacity: 0; transform: translateY(2px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+        .survey-fade-in { animation: survey-fade 0.4s ease-out; }
+        @media (prefers-reduced-motion: reduce) {
+          .survey-fade-in { animation: none; }
+        }
+      `}</style>
+
+      <PageHeader eyebrow="RAG · TANYA-JAWAB" title="Tanya-Jawab Dokumen" />
+
+      <div className="grid gap-6 lg:grid-cols-[1fr_320px]">
+        <div>
+          {/* Question composer */}
+          <Card interactive={false} className="p-5">
+            <Field label="Pertanyaan">
+              <Textarea
+                rows={4}
+                placeholder="Tulis pertanyaan tentang dokumen kedeputian…"
+                value={question}
+                onChange={(e) => setQuestion(e.target.value)}
+              />
+            </Field>
+            <div className="mt-3 flex justify-end">
+              <Button variant="primary" onClick={ask} disabled={loading}>
+                {loading ? "Memproses…" : "Tanya"}
+              </Button>
+            </div>
+          </Card>
+
+          {error && (
             <div className="mt-4">
-              <h3 className="font-semibold">Sumber rujukan</h3>
-              <ul className="mt-2 space-y-1">
-                {result.citations.map((c, i) => (
-                  <li key={i} className="rounded border bg-white px-3 py-2 text-sm">
-                    <span className="font-medium">{c.filename}</span>
-                    {c.page_or_slide != null && <span> — halaman/slide {c.page_or_slide}</span>}
-                    {c.section_title && <span> — {c.section_title}</span>}
-                  </li>
-                ))}
-              </ul>
+              <ErrorBanner>{error}</ErrorBanner>
+            </div>
+          )}
+
+          {!result && !error && (
+            <p className="mt-4 text-sm text-slate-500">
+              Ajukan pertanyaan untuk memperoleh jawaban beserta rujukan dokumen.
+            </p>
+          )}
+
+          {result && (
+            <div className="survey-fade-in mt-6">
+              <Card interactive={false} className="p-6">
+                <p className="text-sm font-semibold text-slate-600">
+                  Laporan survei · {result.citations.length} sumber
+                </p>
+                <p className="mt-4 whitespace-pre-wrap text-[15px] leading-relaxed text-slate-800">
+                  {result.answer}
+                </p>
+
+                {result.citations.length > 0 && (
+                  <div className="mt-6 border-t border-slate-100 pt-4">
+                    <p className="text-sm font-semibold text-slate-600">Rujukan</p>
+                    <div className="mt-3 space-y-2">
+                      {result.citations.map((c, i) => (
+                        <p
+                          key={i}
+                          className="flex items-baseline gap-2 text-sm leading-relaxed text-slate-500"
+                        >
+                          <CitationPin index={i + 1} />
+                          <span>
+                            <span className="font-medium text-slate-800">{c.filename}</span>
+                            {c.page_or_slide != null && (
+                              <span> — halaman/slide {c.page_or_slide}</span>
+                            )}
+                            {c.section_title && <span> — {c.section_title}</span>}
+                          </span>
+                        </p>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </Card>
             </div>
           )}
         </div>
-      )}
-    </div>
+
+        {result && result.citations.length > 0 && (
+          <aside className="lg:sticky lg:top-6 lg:self-start">
+            <Card className="p-5">
+              <p className="text-sm font-semibold text-slate-600">Legenda</p>
+              <ul className="mt-3 space-y-3">
+                {result.citations.map((c, i) => (
+                  <li key={i} className="flex items-start gap-3">
+                    <CitationPin index={i + 1} />
+                    <div className="min-w-0">
+                      <p className="font-medium leading-snug text-slate-800">{c.filename}</p>
+                      <p className="mt-0.5 text-xs text-slate-500">
+                        {c.page_or_slide != null
+                          ? `halaman/slide ${c.page_or_slide}`
+                          : "—"}
+                        {c.section_title ? ` · ${c.section_title}` : ""}
+                      </p>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            </Card>
+          </aside>
+        )}
+      </div>
+    </>
   );
 }

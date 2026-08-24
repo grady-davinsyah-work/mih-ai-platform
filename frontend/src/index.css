@@ -1,1 +1,29 @@
 @import "tailwindcss";
+
+@theme {
+  /* PMP Portal — palette */
+  /* (blue/slate/amber are Tailwind defaults; define radius, shadows, font) */
+  --font-sans: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+
+  --radius-sm: 8px;
+  --radius-md: 14px;
+  --radius-lg: 22px;
+
+  --shadow-sm: 0 8px 24px rgba(15, 23, 42, 0.08);
+  --shadow-lg: 0 24px 70px rgba(15, 23, 42, 0.18);
+}
+
+@layer base {
+  body {
+    @apply bg-slate-50 font-sans text-slate-800 antialiased;
+  }
+  ::selection {
+    background: color-mix(in srgb, #1e3a8a 15%, transparent);
+  }
+}
+
+/* Mirrors the template's .container — width: min(100% - 32px, var(--max-width)) */
+.container {
+  width: min(100% - 32px, 1180px);
+  margin-inline: auto;
+}
