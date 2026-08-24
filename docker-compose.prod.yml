@@ -1,0 +1,93 @@
+# ============================================================================
+# Produksi MIH — VPS terpisah + reverse proxy host (nginx di HOST, bukan Docker).
+# Pola mengikuti /opt/arthakarya (compose prod): db/backend/worker TANPA host
+# port (jaringan internal Docker saja). Frontend bind 127.0.0.1:8080 agar hanya
+# reverse proxy host yang bisa menjangkaunya — TLS ditangani HOST, bukan compose.
+#
+# Cara pakai:
+#   1. cp .env.example.prod .env.prod   lalu isi nilai asli (jangan commit .env.prod)
+#   2. bash scripts/deploy-prod.sh
+#   3. docker compose --env-file .env.prod -f docker-compose.prod.yml run --rm seed
+# ============================================================================
+
+# Proxy korporat opsional: KOSONG di VPS normal (internet langsung). Isi bila
+# jaringan VPS memblokir akses luar (mis. proxy.bappenas.go.id:8080).
+x-proxy-env: &proxy-env
+  HTTP_PROXY: ${HTTP_PROXY:-}
+  HTTPS_PROXY: ${HTTPS_PROXY:-}
+  NO_PROXY: ${NO_PROXY:-localhost,127.0.0.1}
+
+services:
+  db:
+    image: pgvector/pgvector:pg16
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-mih}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-mih}
+      POSTGRES_DB: ${POSTGRES_DB:-mih}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./db/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-mih} -d ${POSTGRES_DB:-mih}"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+
+  backend:
+    build: ./backend
+    restart: unless-stopped
+    env_file: .env.prod
+    environment:
+      <<: *proxy-env
+      DATABASE_URL: postgres://${POSTGRES_USER:-mih}:${POSTGRES_PASSWORD:-mih}@db:5432/${POSTGRES_DB:-mih}
+      DATA_DIR: /data
+    volumes:
+      - appdata:/data
+    depends_on:
+      db:
+        condition: service_healthy
+
+  worker:
+    build: ./worker
+    restart: unless-stopped
+    env_file: .env.prod
+    environment:
+      <<: *proxy-env
+      DATABASE_URL: postgres://${POSTGRES_USER:-mih}:${POSTGRES_PASSWORD:-mih}@db:5432/${POSTGRES_DB:-mih}
+      DATA_DIR: /data
+      RAW_DIR: /data/raw
+    volumes:
+      - appdata:/data
+    depends_on:
+      db:
+        condition: service_healthy
+
+  # One-shot: buat / perbarui akun admin (idempotent, ON CONFLICT DO UPDATE).
+  # Jangan di-up — jalankan sekali setelah stack hidup:
+  #   docker compose --env-file .env.prod -f docker-compose.prod.yml run --rm seed
+  seed:
+    build: ./backend
+    env_file: .env.prod
+    environment:
+      <<: *proxy-env
+      DATABASE_URL: postgres://${POSTGRES_USER:-mih}:${POSTGRES_PASSWORD:-mih}@db:5432/${POSTGRES_DB:-mih}
+      DATA_DIR: /data
+    command: ["bun", "run", "seed"]
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: "no"
+
+  frontend:
+    build: ./frontend
+    restart: unless-stopped
+    # Hanya loopback: reverse proxy host (nginx) meneruskan 443 -> 127.0.0.1:8080.
+    ports:
+      - "127.0.0.1:8080:80"
+    depends_on:
+      - backend
+
+volumes:
+  pgdata:
+  appdata:
