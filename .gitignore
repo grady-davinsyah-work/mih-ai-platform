@@ -5,6 +5,9 @@
 secrets/
 deploy/vps/cloudflare.ini
 
+# Compose override lokal (mis. ekspos port backend hanya ke Tailscale)
+docker-compose.override.yml
+
 # Node
 node_modules/
 dist/
