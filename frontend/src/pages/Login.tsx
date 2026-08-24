@@ -42,10 +42,10 @@ export default function Login({ onLogin }: { onLogin: (u: User) => void }) {
           Portal Internal · Kedeputian Makro
         </p>
         <h1 className="mt-3 text-3xl font-extrabold text-slate-900 md:text-4xl">
-          Kedeputian Makro
+          Macro Intelligence Hub
         </h1>
         <p className="mt-2 text-slate-600">
-          Tanya-jawab dokumen perencanaan makro
+          Akses data makro dan analisis untuk mendukung pengambilan keputusan strategis di Kedeputian Makro.
         </p>
 
         <form onSubmit={submit} className="mt-8 space-y-4">
