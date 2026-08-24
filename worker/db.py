@@ -34,7 +34,7 @@ def ensure_raw_document(conn, filename: str, file_path: str, sha256: str, file_t
 def get_pending(conn, limit: int = 10):
     return conn.execute(
         "SELECT id, filename, file_type, file_extension, file_path FROM documents "
-        "WHERE status='pending' ORDER BY id LIMIT %s",
+        "WHERE status='pending' ORDER BY id LIMIT %s FOR UPDATE SKIP LOCKED",
         (limit,),
     ).fetchall()
 
