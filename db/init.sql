@@ -52,7 +52,7 @@ CREATE TABLE IF NOT EXISTS api_tokens (
 
 CREATE TABLE IF NOT EXISTS usage_logs (
   id           BIGSERIAL PRIMARY KEY,
-  token_id     BIGINT NOT NULL REFERENCES api_tokens(id) ON DELETE CASCADE,
+  token_id     BIGINT REFERENCES api_tokens(id) ON DELETE CASCADE,
   user_id      BIGINT NOT NULL REFERENCES users(id),
   question     TEXT NOT NULL,
   answer       TEXT NOT NULL,

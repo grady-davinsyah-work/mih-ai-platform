@@ -75,8 +75,11 @@ router.post("/tokens/:id/revoke", requireAdmin, async (req, res) => {
 
 router.get("/usage-logs", requireAdmin, async (_req, res) => {
   const { rows } = await pool.query(
-    `SELECT l.id, l.created_at, l.question, l.latency_ms, t.name AS token_name
-       FROM usage_logs l JOIN api_tokens t ON t.id = l.token_id
+    `SELECT l.id, l.created_at, l.question, l.latency_ms,
+            COALESCE(t.name, u.name) AS token_name
+       FROM usage_logs l
+       LEFT JOIN api_tokens t ON t.id = l.token_id
+       LEFT JOIN users u ON u.id = l.user_id
       ORDER BY l.id DESC LIMIT 200`
   );
   res.json(rows);

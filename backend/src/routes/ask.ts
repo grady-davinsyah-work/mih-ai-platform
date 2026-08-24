@@ -1,12 +1,12 @@
 import { Router } from "express";
 import { pool } from "../db";
 import { config } from "../config";
-import { tokenAuth } from "../middleware/tokenAuth";
+import { askAuth } from "../middleware/tokenAuth";
 import { ask } from "../services/rag";
 
 const router = Router();
 
-router.post("/ask", tokenAuth, async (req, res) => {
+router.post("/ask", askAuth, async (req, res) => {
   const question = String(req.body?.question ?? "").trim();
   if (!question) return res.status(400).json({ error: "question required" });
 
