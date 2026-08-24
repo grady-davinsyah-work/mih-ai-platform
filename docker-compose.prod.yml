@@ -67,6 +67,9 @@ services:
   # Jangan di-up — jalankan sekali setelah stack hidup:
   #   docker compose --env-file .env.prod -f docker-compose.prod.yml run --rm seed
   seed:
+    # Image SAMA dengan backend (satu Dockerfile), supaya `up -d --no-build`
+    # tidak mencari image terpisah bernama mih-seed yang tidak pernah dibangun.
+    image: mih-backend:latest
     build: ./backend
     env_file: .env.prod
     environment:
