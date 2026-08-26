@@ -1,19 +1,19 @@
 import { Link } from "react-router-dom";
 import { externalDashboards } from "../../data/portal";
+import { usePortalAuth } from "./PortalLayout";
 
 /*
  * Dashboard eksternal (iframe) — reproduksi `renderDashboardPage()` dari
  * PMP Portal.html.
  *
- * Rute `/dashboard/:slug` dipakai DI KEDUA branch:
- *  - guest  (PublicRoutes): semua dashboard private → menampilkan "Akses Ditolak".
- *  - user   (internal App) : iframe penuh 150vh setelah login.
- *
- * Komponen ini sengaja TIDAK bergantung pada portal.css (yang hanya aktif di
- * PortalLayout): menggunakan Tailwind utility agar styling benar di internal
- * app tempat portal.css tidak dimuat.
+ * Rute `/dashboard/:slug` dipakai DI KEDUA branch (guest & user). Semua
+ * dashboard private: guest melihat "Akses Ditolak", user yang login melihat
+ * iframe penuh 150vh. Login-state dibaca via usePortalAuth() — bukan dari
+ * branch route — agar user login tetap bisa membuka semua submenu dashboard
+ * meski rutenya berada di PortalLayout.
  */
 export default function PortalDashboard({ slug }: { slug: string }) {
+  const { user } = usePortalAuth();
   const activeDash = externalDashboards.find((d) => d.slug === slug);
 
   if (!activeDash) {
@@ -34,7 +34,7 @@ export default function PortalDashboard({ slug }: { slug: string }) {
     );
   }
 
-  if (activeDash.status === "private") {
+  if (activeDash.status === "private" && !user) {
     return (
       <section className="py-12">
         <div className="mx-auto max-w-4xl px-4 text-center">
