@@ -82,28 +82,67 @@ export interface ExternalLink {
 /* ===== Data mentah dari file HTML (field nama asli) ===== */
     const services = [
       {
-        slug: "standar-layanan",
-        name: "Standar Layanan",
-        description: "Komitmen transparansi pelayanan publik Kedeputian Bidang Perencanaan Makro Pembangunan makro secara berkala bagi publik dan instansi.",
+        slug: "pelayanan-pendampingan-pengalokasian-anggaran-bagi-kementerian-lembaga",
+        name: "Pelayanan Pendampingan Pengalokasian Anggaran bagi Kementerian/Lembaga",
+        description: "Diberikan kepada Kementerian/Lembaga (K/L) dalam menyusun perencanaan dan pengalokasian anggaran.​",
         documents: [
-          { type: "pdf", title: "SK Standar Pelayanan PMP.pdf", url: "https://drive.google.com/file/d/1mYbJaoDbYDlUMjntl-tHrcX2Y4rSMwnd/preview" },
-          { type: "image", title: "Maklumat Pelayanan Makro Pembangunan", url: "https://images.unsplash.com/photo-1454165804606-c3d57bc86b40" }
+          { type: "pdf", title: "Pelayanan Pendampingan Pengalokasian Anggaran bagi Kementerian/Lembaga.pdf", url: "https://drive.google.com/file/d/1sJJE9nfmZhY2J8MT6-h0d1eBFP3J4Ug0/preview" }
         ]
       },
       {
-        slug: "riset-magang",
-        name: "Riset & Magang",
-        description: "Fasilitas pemagangan teknis dan izin pengumpulan data riset akademis di lingkungan Direktorat PMP.",
+        slug: "konsultasi-arah-kebijakan-nasional-bagi-sektor-di-daerah",
+        name: "Konsultasi Arah Kebijakan Nasional bagi Sektor di Daerah",
+        description: "Diberikan kepada Pemerintah Daerah/Masyarakat umum/Mahasiswa/Lembaga Non-Pemerintah/Organisasi Masyarakat dalam penyusunan perencanaan Pembangunan daerah agar dapat selaras dengan kebijakan nasional.​",
         documents: [
-          { type: "pdf", title: "Alur Penerimaan Magang & Riset Mandiri.pdf", url: "https://drive.google.com/file/d/1mYbJaoDbYDlUMjntl-tHrcX2Y4rSMwnd/preview" }
+          { type: "pdf", title: "Konsultasi Arah Kebijakan Nasional bagi Sektor di Daerah.pdf", url: "https://drive.google.com/file/d/1735p-bKbyXFYt-9TjQLcDIIKqQr7RArT/preview" }
         ]
       },
       {
-        slug: "saluran-pengaduan",
-        name: "Saluran Pengaduan",
-        description: "Penyediaan infrastruktur sistem pengaduan dan aspirasi masyarakat (Dumas) terpadu.",
+        slug: "konsultasi-dokumen-perencanaan-nasional-dan-daerah",
+        name: "Konsultasi Dokumen Perencanaan Nasional dan Daerah​",
+        description: "Jenis layanan ini merupakan pelayanan yang diberikan kepada Kementerian/Lembaga/Pemerintah Daerah/DPRD dalam rangka menyusun atau menyesuaikan dokumen perencanaan nasional dan daerah, yang mencakup Rencana Strategis (Renstra) dan Rencana Kerja (Renja) K/L, serta Rencana Pembangunan Jangka Menengah Daerah (RPJMD) dan Rencana Kerja Pemerintah Daerah (RKPD) Provinsi/Kabupaten/Kota, termasuk penyelarasannya dengan Rencana Pembangunan Jangka Menengah Nasional (RPJMN).​",
         documents: [
-          { type: "image", title: "Infografis Prosedur Pengaduan Dumas", url: "https://images.unsplash.com/photo-1557804506-669a67965ba0" }
+          { type: "pdf", title: "Konsultasi Dokumen Perencanaan Nasional dan Daerah.pdf", url: "https://drive.google.com/file/d/1Efdz6DiGF2Pxy8IhusVjJUuwcw23G6mx/preview" }
+        ]
+      },
+      {
+        slug: "fasilitasi-pendampingan-perencanaan-pembangunan-nasional",
+        name: "Fasilitasi Pendampingan Perencanaan Pembangunan Nasional​",
+        description: "Jenis layanan ini merupakan layanan yang diberikan kepada Kementerian/Lembaga, Pemerintah Daerah, DPRD, masyarakat umum, mahasiswa, lembaga nonpemerintah, dan organisasi masyarakat, khususnya dalam rangka mendukung pemahaman serta penjabaran teknis dan substantif mengenai keterkaitan perencanaan pembangunan di tingkat pusat dan daerah.​​",
+        documents: [
+          { type: "pdf", title: "Fasilitasi Pendampingan Perencanaan Pembangunan Nasional.pdf", url: "https://drive.google.com/file/d/1I5Xd2vnS4ek-Ivzhta-RMrrpyNocsM-6/preview" }
+        ]
+      },
+      {
+        slug: "fasilitasi-penyusunan-model-model-pembangunan",
+        name: "Fasilitasi Penyusunan Model-Model Pembangunan​​",
+        description: "Jenis layanan ini merupakan layanan yang diberikan kepada Kementerian/Lembaga, Pemerintah Daerah, DPRD, masyarakat umum, mahasiswa, lembaga nonpemerintah, dan organisasi masyarakat dalam rangka meningkatkan pemahaman mengenai pengembangan inovasi di bidang perencanaan pembangunan.​​",
+        documents: [
+          { type: "pdf", title: "Fasilitasi Penyusunan Model-Model Pembangunan​.pdf", url: "https://drive.google.com/file/d/1hj6fAiHszvooQ7LXkUMxH4XBlLPoV9ru/preview" }
+        ]
+      },
+      {
+        slug: "fasilitasi-penyusunan-rencana-akse-percepatan-pembangunan-nasional",
+        name: "Fasilitasi Penyusunan Rencana Aksi Percepatan Pembangunan Nasional​​",
+        description: "Jenis layanan ini merupakan layanan yang diberikan kepada Pemerintah Daerah, DPRD, masyarakat umum, mahasiswa, lembaga nonpemerintah, dan organisasi masyarakat dalam rangka mendukung perumusan kerangka hingga pemantauan rencana aksi pelaksanaan kegiatan percepatan pembangunan nasional, termasuk upaya mengidentifikasi dan mengatasi hambatan (debottlenecking) dalam pelaksanaan pembangunan nasional.​​",
+        documents: [
+          { type: "pdf", title: "Fasilitasi Penyusunan Rencana Aksi Percepatan Pembangunan Nasional​.pdf", url: "https://drive.google.com/file/d/19Mc8EVh0-bQyDxz8BqJJEVRHQiGL9Gn4/preview" }
+        ]
+      },
+      {
+        slug: "fasilitasi-kegiatan-tematis-perencanaan-pembangunan-nasional",
+        name: "Fasilitasi Kegiatan Tematis Perencanaan Pembangunan Nasional​​",
+        description: "Jenis layanan ini merupakan layanan yang diberikan kepada Pemerintah Daerah, DPRD, masyarakat umum, mahasiswa, lembaga nonpemerintah, dan organisasi masyarakat dalam rangka mendukung penyusunan perencanaan pembangunan berbasis tema tertentu agar selaras dengan prioritas pembangunan nasional.​",
+        documents: [
+          { type: "pdf", title: "Fasilitasi Kegiatan Tematis Perencanaan Pembangunan Nasional​.pdf", url: "https://drive.google.com/file/d/18EKyVmY9to2V8coSwlYE9jquO3vTu9R6/preview" }
+        ]
+      },
+      {
+        slug: "fasilitasi-pendampingan-perhitungan-indikator-tematik",
+        name: "Fasilitasi Pendampingan Perhitungan Indikator Tematik​​",
+        description: "Jenis layanan ini merupakan layanan yang diberikan kepada Pemerintah Daerah, DPRD, masyarakat umum, mahasiswa, lembaga nonpemerintah, dan organisasi masyarakat dalam rangka mendukung penyusunan dan perhitungan indikator tematik, seperti Blue Economy, GRK, IMD, dan indikator tematik lainnya dalam perencanaan pembangunan nasional.​​",
+        documents: [
+          { type: "pdf", title: "Fasilitasi Pendampingan Perhitungan Indikator Tematik​.pdf", url: "https://drive.google.com/file/d/1jW32Now9UZWwDuJsMc5sQceHYPOrq6Of/preview" }
         ]
       }
     ];
@@ -280,15 +319,15 @@ export interface ExternalLink {
         status: "private"
       },
       {
-        slug: "arthakarya",
-        title: "Dashboard Arthakarya",
-        url: "https://remote.keuanganppn1.cloud/login",
-        status: "private"
-      },
-      {
         slug: "agent-ai",
         title: "Agent AI Kedeputian PMP",
         url: "https://agent-mih.tatakelolapmp.workers.dev/",
+        status: "private"
+      },
+      {
+        slug: "dashboard-kepegawaian",
+        title: "Dashboard Kepegawaian",
+        url: "https://dashboardkepegawaian.tatakelolapmp.workers.dev/",
         status: "private"
       }
     ];
@@ -300,9 +339,46 @@ export const units: Unit[] = [
         position: "Deputi Bidang Perencanaan Makro Pembangunan",
         email: "chandra@bappenas.go.id",
         image: "chandra",
-        profilPimpinanId: "Biodata Deputi Disini.",
-        tugasUnitKerjaId: "Dalam melaksanakan tugas sebagaimana dimaksud dalam Pasal 52, Deputi Perencanaan Makro Pembangunan mempunyai tugas menyelenggarakan koordinasi perumusan dan sinkronisasi pelaksanaan kebijakan di bidang perencanaan pembangunan nasional lintas sektor.",
-        fungsiUnitKerjaId: "Dalam melaksanakan tugas sebagaimana dimaksud dalam Pasal 52, Deputi menyelenggarakan fungsi penyusunan rencana makro strategis."
+        profilPimpinanId: `Dr. Eka Chandra Buana, S.E., M.A. saat ini menjabat sebagai Deputi Bidang Perencanaan Makro Pembangunan, Kementerian PPN/Bappenas, sejak Januari 2025. Sebelumnya, beliau dipercaya sebagai Direktur Perencanaan Makro dan Analisis Statistik pada periode Juli 2018–Januari 2025. Dengan pengalaman panjang di Bappenas sejak 2008, perjalanan karier beliau menunjukkan konsistensi dan pengalaman yang kuat dalam bidang perencanaan pembangunan, analisis ekonomi makro, kebijakan pendanaan pembangunan, serta analisis kebijakan untuk mendukung perumusan pembangunan nasional.<br>
+        <br>Dalam perjalanan profesionalnya, Dr. Eka Chandra Buana telah menduduki berbagai posisi strategis di Bappenas. Sebelum menjabat sebagai Direktur, beliau pernah dipercaya sebagai Plt. Direktur Keuangan Negara dan Analisis Moneter, Kepala Subdirektorat Alokasi Pendanaan Pemerintah Pusat Bidang Ekonomi, Maritim dan Sumber Daya, serta beberapa posisi pada bidang alokasi pendanaan pembangunan pusat dan daerah. Pengalaman tersebut memberikan landasan yang kuat dalam memahami keterkaitan antara perencanaan pembangunan, pengelolaan pendanaan, kebijakan ekonomi, dan pencapaian sasaran pembangunan nasional.<br>
+        <br>Dalam kapasitasnya, beliau memiliki pengalaman dalam mendukung penyusunan perencanaan pembangunan melalui analisis kondisi dan prospek perekonomian, penyusunan kerangka ekonomi makro, serta analisis statistik sebagai basis perumusan kebijakan. Pengalaman tersebut kemudian menjadi fondasi penting dalam menjalankan perannya saat ini sebagai Deputi Bidang Perencanaan Makro Pembangunan yang memiliki posisi strategis dalam proses perumusan arah dan kebijakan pembangunan makro nasional.<br>
+        <br>Latar belakang pendidikannya juga memperkuat kompetensi tersebut. Beliau menyelesaikan studi antara lain
+        <ul>
+          <li>S1 Ilmu Ekonomi di Universitas Gadjah Mada (1999)</li>
+          <li>Master of Arts (M.A.) in Economics dari Georgia State University (2002)</li>
+          <li>Doktor bidang Kepemimpinan dan Inovasi Kebijakan Universitas Gadjah Mada (2025)</li>
+        </ul>
+        <br>Kombinasi pendidikan ekonomi, pengalaman panjang dalam birokrasi perencanaan pembangunan, serta kajian mengenai kepemimpinan dan inovasi kebijakan memberikan perspektif yang luas dalam melihat persoalan pembangunan, baik dari sisi ekonomi dan kebijakan maupun dari aspek kelembagaan, kepemimpinan, dan transformasi kebijakan.<br>
+        <br>Dengan rekam jejak tersebut, Dr. Eka Chandra Buana memiliki pengalaman yang kuat dalam menghubungkan analisis ekonomi, perencanaan pembangunan, pendanaan, dan kebijakan publik dalam konteks pembangunan nasional. Perjalanan kariernya dari berbagai posisi teknis di bidang pendanaan pembangunan hingga menjadi Deputi Bidang Perencanaan Makro Pembangunan mencerminkan pengalaman yang luas dalam proses perumusan kebijakan dan perencanaan pembangunan Indonesia.<br>`,
+        tugasUnitKerjaId: "Deputi Bidang Perencanaan Makro Pembangunan mempunyai tugas menyelenggarakan koordinasi, perumusan kebijakan, sinkronisasi pelaksanaan kebijakan, pemantaian, evaluasi dan pengendalian, serta penyusunan prakarsa strategis pembangunan lintas sektor perencanaan pembangunan nasional di bidang perencanaan makro pembangunan.",
+        fungsiUnitKerjaId: `
+        Dalam melaksanakan tugas, Deputi menyelenggarakan fungsi:
+        <ul>
+          <li>koordinasi, sinkronisasi, perumusan, dan penetapan kebijakan perencanaan pembangunan nasional dalam mendukung pencapaian pertumbuhan yang berkualitas dan berkelanjutan, penurunan kemiskinan, dan peningkatan produktivitas sumber daya manusia di bidang perencanaan makro pembangunan;</li>
+          <li>koordinasi, sinkronisasi, dan integrasi penyusunan rencana pembangunan nasional;</li>
+          <li>koordinasi, analisis, dan perumusan kebijakan perencanaan pembangunan nasional untuk tema, sasaran, arah kebijakan prioritas pembangunan nasional, kerangka ekonomi makro nasional dan wilayah, dan kerja sama internasional di bidang perencanaan makro pembangunan;</li>
+          <li>koordinasi, perumusan, dan penyusunan keselarasan kebijakan ekomoni termasuk penetapan asumsi dasar ekonomi makro, koherensi dan konsistensi kebijakan ekonomi, dan analisis kebutuhan investasi yang bersumber dari Anggaran Pendapatan dan Belanja Negara dan non-Anggaran Pendapatan dan Belanja Negara;</li>
+          <li>koordinasi dan sinkronisasi penyusunan kebijakan di bidang analisis statistic, kebutuhan investasi fiscal, dan moneter dalam penyusunan Anggaran Pendapatan dan Belanja Negara;</li>
+          <li>koordinasi dan sinkronisasi penentuan sasaran dan target makro pembangunan nasional;</li>
+          <li>penyusunan prakarsa strategis pembangunan lintas sektor melalui pengembangan model inovatif pembangunan sebagai dasar penerapan dan pelembagaan kementerian/Lembaga/pemerintah daerah di bidang perencanaan makro pembangunan;</li>
+          <li>koordinasi percepatan pelaksanaan program rencana pembangunan nasional di bidang perencanaan makro pembangunan;</li>
+          <li>koordinasi percepatan pelaksanaan rencana pembangunan nasional dan fasilitasi penyelesaian isu pelaksanaan pembangunan nasional di bidang perencanaan makro pembangunan;</li>
+          <li>pemantauan dan evaluasi pelaksanaan program dan kegiatan pembangunan di bidang perencanaan makro pembangunan;</li>
+          <li>pelaksanaan evaluasi dan pelaporan pelaksanaan tugas dan fungsi perencanaan pembangunan nasional di bidang perencanaan makro pembangunan;</li>
+          <li>pelaksanaan administrasi Deputi; dan</li>
+          <li>pelaksanaan fungsi lain yang diberikan oleh Menteri/Kepala.</li>
+        </ul>
+        <br>
+        <strong>Struktur Organisasi</strong><br>
+        Susunan organisasi Deputi Bidang Perencanaan Makro Pembangunan terdiri atas:
+        <ul>
+          <li>Sekretariat Deputi;</li>
+          <li>Direktorat Perencanaan Ekonomi Makro dan Pengembangan Model Pembangunan;</li>
+          <li>Direktorat Perencanaan Fiskal, Moneter, dan Sektor Keuangan;</li>
+          <li>Direktorat Perencanaan Hilirisasi dan Kerjasama Ekonomi Internasional;</li>
+          <li>Direktorat Perencanaan Peningkatan Produktivitas dan Pembangunan Tematik; dan</li>
+          <li>Direktorat Sinergi dan Tata Kelola Perencanaan Pembangunan.</li>
+        </ul>`
       },
       {
         slug: "sesdep",
@@ -660,6 +736,7 @@ export const externalLinks: ExternalLink[] = [
   { name: "Forum Masyarakat Statistik", url: "https://sites.google.com/view/web-fms/beranda", label: "https://drive.google.com/thumbnail?id=1rTPzAjEJ9mIcn7amiEBAJTWhtE5A2-ia&sz=w2000", status: "public" },
   { name: "Indonesia Emas 2045", url: "https://indonesia2045.go.id/", label: "https://drive.google.com/thumbnail?id=1Pr4uASZgSCBFj__gf9wI2rlz__snPM-8&sz=w2000", status: "public" },
   { name: "Perpustakaan PMP", url: "https://sites.google.com/view/perpustakaanpmp/home", label: "https://drive.google.com/thumbnail?id=14sTD4clEV5wzJyQshHTA192HTRqHmhlA&sz=w2000", status: "private" },
+  { name: "Arthakarya", url: "https://remote.keuanganppn1.cloud/login", label: "https://drive.google.com/thumbnail?id=1JfEVFeFi6pT16rm_knsVDJFmczCqSynD&sz=w2000", status: "private" },
 ];
 
 export const portalMenus: PortalMenuItem[] = [
