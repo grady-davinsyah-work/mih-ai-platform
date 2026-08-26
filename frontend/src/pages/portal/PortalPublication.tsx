@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { publications } from "../../data/portal";
+import { usePortalContent } from "./usePortalContent";
 
 /*
  * Daftar Publikasi + Detail Publikasi — reproduksi `renderPublicationListPage()`
@@ -8,6 +8,7 @@ import { publications } from "../../data/portal";
  * Rute: `/publikasi` (list) dan `/publikasi/:slug` (detail).
  */
 export function PortalPublication() {
+  const { publications } = usePortalContent();
   return (
     <section className="section" style={{ background: "white" }}>
       <div className="container">
@@ -39,6 +40,7 @@ export function PortalPublication() {
 }
 
 export function PortalPublicationDetail({ slug }: { slug: string }) {
+  const { publications } = usePortalContent();
   const item = publications.find((p) => p.slug === slug);
 
   if (!item) {

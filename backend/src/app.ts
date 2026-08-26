@@ -2,6 +2,7 @@ import express, { type NextFunction, type Request, type Response } from "express
 import { loadSession } from "./middleware/sessionAuth";
 import askRoutes from "./routes/ask";
 import authRoutes from "./routes/auth";
+import contentRoutes from "./routes/content";
 import adminRoutes from "./routes/admin";
 
 export function createApp() {
@@ -10,6 +11,7 @@ export function createApp() {
   app.use(loadSession);
   app.use("/api", askRoutes);
   app.use("/api", authRoutes);
+  app.use("/api", contentRoutes);
   app.use("/api/admin", adminRoutes);
   app.get("/health", (_req, res) => res.json({ ok: true }));
   // Express 5 meneruskan error dari handler async ke middleware berikut

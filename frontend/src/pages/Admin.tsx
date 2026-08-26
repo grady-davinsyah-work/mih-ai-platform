@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import type { FormEvent } from "react";
-import { api, type Token, type User } from "../api";
+import { api, type ContentItem, type Token, type User } from "../api";
 import {
   Button,
   Card,
@@ -9,7 +9,44 @@ import {
   Input,
   PageHeader,
   Select,
+  Textarea,
 } from "../components/ui";
+
+interface ContentForm {
+  type: "news" | "publication";
+  slug: string;
+  title: string;
+  excerpt: string;
+  image: string;
+  category: string;
+  author: string;
+  date: string;
+  contentText: string;
+  document_url: string;
+  document_name: string;
+  galleryText: string;
+  is_published: boolean;
+}
+
+const EMPTY_CONTENT_FORM: ContentForm = {
+  type: "news",
+  slug: "",
+  title: "",
+  excerpt: "",
+  image: "",
+  category: "",
+  author: "",
+  date: "",
+  contentText: "",
+  document_url: "",
+  document_name: "",
+  galleryText: "",
+  is_published: true,
+};
+
+function splitLines(s: string): string[] {
+  return s.split("\n").map((l) => l.trim()).filter(Boolean);
+}
 
 export default function Admin() {
   const [users, setUsers] = useState<User[]>([]);
@@ -21,6 +58,10 @@ export default function Admin() {
   const [tokenName, setTokenName] = useState("");
   const [freshToken, setFreshToken] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [contents, setContents] = useState<ContentItem[]>([]);
+  const [showContentForm, setShowContentForm] = useState(false);
+  const [editingId, setEditingId] = useState<number | null>(null);
+  const [contentForm, setContentForm] = useState<ContentForm>(EMPTY_CONTENT_FORM);
 
   async function load() {
     try {
@@ -32,6 +73,84 @@ export default function Admin() {
     }
   }
   useEffect(() => { load(); }, []);
+
+  async function loadContents() {
+    try {
+      setContents(await api.adminContent());
+    } catch (err: any) {
+      setError(err.message);
+    }
+  }
+  useEffect(() => { loadContents(); }, []);
+
+  function openCreate() {
+    setEditingId(null);
+    setContentForm(EMPTY_CONTENT_FORM);
+    setShowContentForm(true);
+  }
+
+  function openEdit(c: ContentItem) {
+    setEditingId(c.id);
+    setContentForm({
+      type: c.type,
+      slug: c.slug,
+      title: c.title,
+      excerpt: c.excerpt,
+      image: c.image,
+      category: c.category,
+      author: c.author,
+      date: c.date,
+      contentText: (c.content ?? []).join("\n"),
+      document_url: c.document_url,
+      document_name: c.document_name,
+      galleryText: (c.gallery ?? []).join("\n"),
+      is_published: c.is_published,
+    });
+    setShowContentForm(true);
+  }
+
+  async function saveContent(e: FormEvent) {
+    e.preventDefault();
+    setBusy(true);
+    try {
+      const payload = {
+        type: contentForm.type,
+        slug: contentForm.slug,
+        title: contentForm.title,
+        excerpt: contentForm.excerpt,
+        image: contentForm.image,
+        category: contentForm.category,
+        author: contentForm.author,
+        date: contentForm.date,
+        content: splitLines(contentForm.contentText),
+        document_url: contentForm.document_url,
+        document_name: contentForm.document_name,
+        gallery: splitLines(contentForm.galleryText),
+        is_published: contentForm.is_published,
+      };
+      if (editingId === null) await api.createContent(payload);
+      else await api.updateContent(editingId, payload);
+      setShowContentForm(false);
+      loadContents();
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function removeContent(c: ContentItem) {
+    if (!window.confirm(`Hapus konten "${c.title}"?`)) return;
+    setBusy(true);
+    try {
+      await api.deleteContent(c.id);
+      loadContents();
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setBusy(false);
+    }
+  }
 
   async function createUser(e: FormEvent) {
     e.preventDefault();
@@ -73,6 +192,120 @@ export default function Admin() {
 
       <div className="space-y-8">
         {error && <ErrorBanner>{error}</ErrorBanner>}
+
+        {/* Kelola konten publik */}
+        <Card interactive={false} className="p-5">
+          <div className="flex items-center justify-between">
+            <h2 className="text-sm font-extrabold text-slate-600">Kelola Konten Publik</h2>
+            <Button variant="primary" onClick={openCreate} disabled={busy}>Tambah Konten</Button>
+          </div>
+
+          {showContentForm && (
+            <form onSubmit={saveContent} className="mt-4 grid gap-3 sm:grid-cols-2">
+              <Field label="Jenis">
+                <Select value={contentForm.type}
+                  onChange={(e) => setContentForm({ ...contentForm, type: e.target.value as "news" | "publication" })}>
+                  <option value="news">Berita</option>
+                  <option value="publication">Publikasi</option>
+                </Select>
+              </Field>
+              <Field label="Slug">
+                <Input placeholder="contoh: berita-triwulan-iii" value={contentForm.slug}
+                  onChange={(e) => setContentForm({ ...contentForm, slug: e.target.value })} required />
+              </Field>
+              <Field label="Judul">
+                <Input placeholder="Judul" value={contentForm.title}
+                  onChange={(e) => setContentForm({ ...contentForm, title: e.target.value })} required />
+              </Field>
+              <Field label="Kategori">
+                <Input placeholder="Berita, Pengumuman, ..." value={contentForm.category}
+                  onChange={(e) => setContentForm({ ...contentForm, category: e.target.value })} />
+              </Field>
+              <Field label="Ringkasan">
+                <Textarea rows={2} placeholder="Ringkasan singkat (excerpt carousel)" value={contentForm.excerpt}
+                  onChange={(e) => setContentForm({ ...contentForm, excerpt: e.target.value })} />
+              </Field>
+              <Field label="URL Gambar">
+                <Input placeholder="https://drive.google.com/..." value={contentForm.image}
+                  onChange={(e) => setContentForm({ ...contentForm, image: e.target.value })} />
+              </Field>
+              {contentForm.type === "publication" && (
+                <>
+                  <Field label="URL Dokumen">
+                    <Input placeholder="https://..." value={contentForm.document_url}
+                      onChange={(e) => setContentForm({ ...contentForm, document_url: e.target.value })} />
+                  </Field>
+                  <Field label="Nama Dokumen">
+                    <Input placeholder="Laporan Triwulan III 2026.pdf" value={contentForm.document_name}
+                      onChange={(e) => setContentForm({ ...contentForm, document_name: e.target.value })} />
+                  </Field>
+                </>
+              )}
+              <Field label="Isi">
+                <Textarea rows={4} placeholder="Satu blok per baris (paragraf / HTML)" value={contentForm.contentText}
+                  onChange={(e) => setContentForm({ ...contentForm, contentText: e.target.value })} />
+              </Field>
+              <Field label="Galeri">
+                <Textarea rows={4} placeholder="Satu URL gambar per baris" value={contentForm.galleryText}
+                  onChange={(e) => setContentForm({ ...contentForm, galleryText: e.target.value })} />
+              </Field>
+              <label className="flex items-end gap-2 pb-1 text-sm text-slate-700">
+                <input type="checkbox" className="accent-blue-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-900"
+                  checked={contentForm.is_published}
+                  onChange={(e) => setContentForm({ ...contentForm, is_published: e.target.checked })} />
+                Publish
+              </label>
+              <div className="flex items-end gap-2">
+                <Button variant="primary" type="submit" disabled={busy}>Simpan</Button>
+                <Button variant="secondary" type="button" onClick={() => setShowContentForm(false)} disabled={busy}>Batal</Button>
+              </div>
+            </form>
+          )}
+
+          <div className="mt-4 overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-slate-200 bg-slate-100 text-left">
+                  <th className="px-3 py-2 text-xs font-extrabold uppercase text-slate-600">Tipe</th>
+                  <th className="px-3 py-2 text-xs font-extrabold uppercase text-slate-600">Judul</th>
+                  <th className="px-3 py-2 text-xs font-extrabold uppercase text-slate-600">Kategori</th>
+                  <th className="px-3 py-2 text-xs font-extrabold uppercase text-slate-600">Status</th>
+                  <th className="px-3 py-2 text-right text-xs font-extrabold uppercase text-slate-600">Aksi</th>
+                </tr>
+              </thead>
+              <tbody>
+                {contents.map((c) => (
+                  <tr key={c.id} className="border-b border-slate-200 last:border-0">
+                    <td className="px-3 py-2 text-xs text-slate-600">{c.type === "news" ? "Berita" : "Publikasi"}</td>
+                    <td className="px-3 py-2 text-slate-700">{c.title}</td>
+                    <td className="px-3 py-2 text-xs text-slate-600">{c.category}</td>
+                    <td className="px-3 py-2">
+                      {c.is_published
+                        ? <span className="text-xs font-semibold text-emerald-600">published</span>
+                        : <span className="text-xs font-semibold text-amber-600">draft</span>}
+                    </td>
+                    <td className="whitespace-nowrap px-3 py-2 text-right">
+                      <button
+                        className="text-xs font-bold text-blue-900 underline underline-offset-2 hover:text-blue-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-900 disabled:cursor-not-allowed disabled:opacity-50"
+                        disabled={busy}
+                        onClick={() => openEdit(c)}
+                      >
+                        Edit
+                      </button>
+                      <button
+                        className="ml-3 text-xs font-bold text-red-600 underline underline-offset-2 hover:text-red-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-600 disabled:cursor-not-allowed disabled:opacity-50"
+                        disabled={busy}
+                        onClick={() => removeContent(c)}
+                      >
+                        Hapus
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </Card>
 
         {/* Buat user */}
         <Card interactive={false} className="p-5">

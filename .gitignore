@@ -29,3 +29,6 @@ Thumbs.db
 # Referensi landing page asli (save-page dari tokogd.com) — tidak ikut git
 PMP Portal.html
 PMP Portal_files/
+
+# Artifak lokal tooling (bukan bagian repo)
+.commandcode/

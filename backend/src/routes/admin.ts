@@ -139,4 +139,131 @@ router.post("/documents/:id/retry", requireLogin, async (req, res) => {
   res.json(rows[0]);
 });
 
+// ---- konten publik (berita & publikasi) ----
+
+// Normalisasi array: terima string[] atau string baru-per-baris.
+function toArray(v: unknown): string[] {
+  if (Array.isArray(v)) return v.map(String).filter(Boolean);
+  if (typeof v === "string" && v.trim()) return v.split("\n").map((s) => s.trim()).filter(Boolean);
+  return [];
+}
+
+const ADMIN_CONTENT_COLS = `
+  id, type, slug, title, excerpt, image, category, author, date, content,
+  document_url, document_name, gallery, is_published, created_by, created_at, updated_at
+`;
+
+// Semua konten (termasuk unpublished) — untuk tabel admin.
+router.get("/content", requireAdmin, async (_req, res) => {
+  const { rows } = await pool.query(
+    `SELECT ${ADMIN_CONTENT_COLS}
+       FROM content
+      ORDER BY date DESC, id DESC`
+  );
+  res.json(rows);
+});
+
+// Buat konten baru.
+router.post("/content", requireAdmin, async (req, res) => {
+  const body = req.body ?? {};
+  const type = String(body.type ?? "");
+  const slug = String(body.slug ?? "").trim();
+  const title = String(body.title ?? "").trim();
+  if (type !== "news" && type !== "publication")
+    return res.status(400).json({ error: "type harus 'news' atau 'publication'" });
+  if (!slug || !title) return res.status(400).json({ error: "slug dan judul wajib" });
+
+  const today = new Date().toISOString().slice(0, 10);
+  let author = String(body.author ?? "");
+  if (!author && req.session?.userId) {
+    const u = await pool.query("SELECT name FROM users WHERE id=$1", [req.session.userId]);
+    author = String(u.rows[0]?.name ?? "");
+  }
+  try {
+    const { rows } = await pool.query(
+      `INSERT INTO content
+         (type, slug, title, excerpt, image, category, author, date, content,
+          document_url, document_name, gallery, is_published, created_by)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)
+       RETURNING ${ADMIN_CONTENT_COLS}`,
+      [
+        type,
+        slug,
+        title,
+        String(body.excerpt ?? ""),
+        String(body.image ?? ""),
+        String(body.category ?? ""),
+        author,
+        String(body.date ?? today),
+        toArray(body.content),
+        String(body.document_url ?? ""),
+        String(body.document_name ?? ""),
+        toArray(body.gallery),
+        body.is_published !== false && body.is_published !== "false",
+        req.session?.userId ?? null,
+      ]
+    );
+    res.status(201).json(rows[0]);
+  } catch (e: any) {
+    if (e.code === "23505") return res.status(409).json({ error: "slug sudah dipakai" });
+    throw e;
+  }
+});
+
+// Update konten.
+router.put("/content/:id", requireAdmin, async (req, res) => {
+  const id = Number(req.params.id);
+  if (!Number.isInteger(id)) return res.status(400).json({ error: "id tidak valid" });
+  const body = req.body ?? {};
+  const existing = await pool.query("SELECT * FROM content WHERE id=$1", [id]);
+  if (existing.rows.length === 0) return res.status(404).json({ error: "konten tidak ditemukan" });
+  const prev = existing.rows[0];
+
+  const patch = {
+    type: body.type !== undefined ? String(body.type) : prev.type,
+    slug: body.slug !== undefined ? String(body.slug).trim() : prev.slug,
+    title: body.title !== undefined ? String(body.title).trim() : prev.title,
+    excerpt: body.excerpt !== undefined ? String(body.excerpt) : prev.excerpt,
+    image: body.image !== undefined ? String(body.image) : prev.image,
+    category: body.category !== undefined ? String(body.category) : prev.category,
+    author: body.author !== undefined ? String(body.author) : prev.author,
+    date: body.date !== undefined ? String(body.date) : prev.date,
+    content: body.content !== undefined ? toArray(body.content) : prev.content,
+    document_url: body.document_url !== undefined ? String(body.document_url) : prev.document_url,
+    document_name: body.document_name !== undefined ? String(body.document_name) : prev.document_name,
+    gallery: body.gallery !== undefined ? toArray(body.gallery) : prev.gallery,
+    is_published: body.is_published !== undefined ? body.is_published === true || body.is_published === "true" : prev.is_published,
+  };
+  if (patch.type !== "news" && patch.type !== "publication")
+    return res.status(400).json({ error: "type harus 'news' atau 'publication'" });
+  if (!patch.slug || !patch.title) return res.status(400).json({ error: "slug dan judul wajib" });
+
+  try {
+    const { rows } = await pool.query(
+      `UPDATE content SET
+         type=$1, slug=$2, title=$3, excerpt=$4, image=$5, category=$6, author=$7,
+         date=$8, content=$9, document_url=$10, document_name=$11, gallery=$12,
+         is_published=$13, updated_at=now()
+       WHERE id=$14 RETURNING ${ADMIN_CONTENT_COLS}`,
+      [
+        patch.type, patch.slug, patch.title, patch.excerpt, patch.image, patch.category,
+        patch.author, patch.date, patch.content, patch.document_url, patch.document_name,
+        patch.gallery, patch.is_published, id,
+      ]
+    );
+    res.json(rows[0]);
+  } catch (e: any) {
+    if (e.code === "23505") return res.status(409).json({ error: "slug sudah dipakai" });
+    throw e;
+  }
+});
+
+// Hapus konten.
+router.delete("/content/:id", requireAdmin, async (req, res) => {
+  const id = Number(req.params.id);
+  if (!Number.isInteger(id)) return res.status(400).json({ error: "id tidak valid" });
+  await pool.query("DELETE FROM content WHERE id=$1", [id]);
+  res.json({ ok: true });
+});
+
 export default router;

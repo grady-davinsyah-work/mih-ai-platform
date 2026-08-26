@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { news } from "../../data/portal";
+import { usePortalContent } from "./usePortalContent";
 
 /*
  * Daftar Berita + Detail Berita — reproduksi `renderNewsListPage()` dan
@@ -8,6 +8,7 @@ import { news } from "../../data/portal";
  * Rute: `/berita` (list) dan `/berita/:slug` (detail).
  */
 export function PortalNews() {
+  const { news } = usePortalContent();
   return (
     <section className="section" style={{ background: "white" }}>
       <div className="container">
@@ -39,6 +40,7 @@ export function PortalNews() {
 }
 
 export function PortalNewsDetail({ slug }: { slug: string }) {
+  const { news } = usePortalContent();
   const item = news.find((n) => n.slug === slug);
 
   if (!item) {

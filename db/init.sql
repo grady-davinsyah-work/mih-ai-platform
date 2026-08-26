@@ -66,3 +66,26 @@ CREATE INDEX IF NOT EXISTS chunks_embedding_idx      ON chunks USING hnsw (embed
 CREATE INDEX IF NOT EXISTS chunks_document_id_idx    ON chunks (document_id);
 CREATE INDEX IF NOT EXISTS chunks_is_outdated_idx    ON chunks (is_outdated);
 CREATE INDEX IF NOT EXISTS usage_logs_token_created_idx ON usage_logs (token_id, created_at);
+
+-- Konten publik (berita & publikasi) yang dikelola lewat admin CRUD.
+CREATE TABLE IF NOT EXISTS content (
+  id            SERIAL PRIMARY KEY,
+  type          TEXT NOT NULL CHECK (type IN ('news','publication')),
+  slug          TEXT NOT NULL UNIQUE,
+  title         TEXT NOT NULL,
+  excerpt       TEXT NOT NULL DEFAULT '',
+  image         TEXT NOT NULL DEFAULT '',
+  category      TEXT NOT NULL DEFAULT '',
+  author        TEXT NOT NULL DEFAULT '',
+  date          TEXT NOT NULL DEFAULT '',
+  content       TEXT[] NOT NULL DEFAULT '{}',
+  document_url  TEXT NOT NULL DEFAULT '',
+  document_name TEXT NOT NULL DEFAULT '',
+  gallery       TEXT[] NOT NULL DEFAULT '{}',
+  is_published  BOOLEAN NOT NULL DEFAULT true,
+  created_by    INT REFERENCES users(id),
+  created_at    TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at    TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS content_type_published_idx ON content (type, is_published, date DESC);

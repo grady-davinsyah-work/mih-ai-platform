@@ -16,6 +16,25 @@ export interface Citation {
   page_or_slide: number | null; section_title: string | null;
 }
 export interface AskResult { answer: string; citations: Citation[]; }
+export interface ContentItem {
+  id: number;
+  type: "news" | "publication";
+  slug: string;
+  title: string;
+  excerpt: string;
+  image: string;
+  category: string;
+  author: string;
+  date: string;
+  content: string[];
+  document_url: string;
+  document_name: string;
+  gallery: string[];
+  is_published: boolean;
+  created_by: number | null;
+  created_at: string;
+  updated_at: string;
+}
 
 async function req<T>(path: string, init?: RequestInit): Promise<T> {
   const headers: Record<string, string> =
@@ -52,4 +71,13 @@ export const api = {
   },
   retryDocument: (id: number) =>
     req<{ id: number; filename: string; status: string }>(`/api/admin/documents/${id}/retry`, { method: "POST" }),
+  content: () => req<ContentItem[]>("/api/content"),
+  contentBySlug: (slug: string) => req<ContentItem>(`/api/content/${slug}`),
+  adminContent: () => req<ContentItem[]>("/api/admin/content"),
+  createContent: (c: Partial<ContentItem>) =>
+    req<ContentItem>("/api/admin/content", { method: "POST", body: JSON.stringify(c) }),
+  updateContent: (id: number, c: Partial<ContentItem>) =>
+    req<ContentItem>(`/api/admin/content/${id}`, { method: "PUT", body: JSON.stringify(c) }),
+  deleteContent: (id: number) =>
+    req<{ ok: boolean }>(`/api/admin/content/${id}`, { method: "DELETE" }),
 };
