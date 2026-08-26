@@ -1,17 +1,53 @@
 import { useEffect, useState } from "react";
-import { Routes, Route, NavLink, Navigate, Link } from "react-router-dom";
+import { Routes, Route, NavLink, Navigate, Link, useParams } from "react-router-dom";
 import { api, type User } from "./api";
 import Login from "./pages/Login";
 import Playground from "./pages/Playground";
 import Documents from "./pages/Documents";
 import Admin from "./pages/Admin";
 
+import PortalLayout from "./pages/portal/PortalLayout";
+import PortalHome from "./pages/portal/PortalHome";
+import PortalDeputy from "./pages/portal/PortalDeputy";
+import PortalUnit from "./pages/portal/PortalUnit";
+import { PortalNews, PortalNewsDetail } from "./pages/portal/PortalNews";
+import { PortalPublication, PortalPublicationDetail } from "./pages/portal/PortalPublication";
+import PortalService from "./pages/portal/PortalService";
+import PortalDashboard from "./pages/portal/PortalDashboard";
+import { externalDashboards } from "./data/portal";
+
 const navClass = ({ isActive }: { isActive: boolean }) =>
   `text-[15px] font-bold transition-colors ${
     isActive ? "text-blue-900" : "text-slate-700 hover:text-blue-900"
   }`;
 
-/* Blue-950 strip with today's date + language pill (mirrors template .topbar) */
+/* ===== Route wrapper untuk path params ===== */
+function NewsDetailRoute() {
+  const { slug } = useParams();
+  return <PortalNewsDetail slug={slug!} />;
+}
+function PublicationDetailRoute() {
+  const { slug } = useParams();
+  return <PortalPublicationDetail slug={slug!} />;
+}
+function UnitRoute() {
+  const { slug } = useParams();
+  return <PortalUnit slug={slug!} />;
+}
+function LeaderRoute() {
+  const { slug } = useParams();
+  return <PortalUnit slug={slug!} mode="leader" />;
+}
+function ServiceRoute() {
+  const { slug } = useParams();
+  return <PortalService slug={slug!} />;
+}
+function DashboardRoute() {
+  const { slug } = useParams();
+  return <PortalDashboard slug={slug!} />;
+}
+
+/* ===== Internal (logged-in) ===== */
 function Topbar() {
   const today = new Date().toLocaleDateString("id-ID", {
     day: "numeric",
@@ -55,6 +91,22 @@ function SiteHeader({ user, onLogout }: { user: User; onLogout: () => void }) {
           <NavLink to="/playground" className={navClass}>Playground</NavLink>
           <NavLink to="/documents" className={navClass}>Dokumen</NavLink>
           {user.is_admin && <NavLink to="/admin" className={navClass}>Admin</NavLink>}
+          <div className="group relative">
+            <button className="text-[15px] font-bold text-slate-700 transition-colors hover:text-blue-900">
+              Dashboard ▾
+            </button>
+            <div className="invisible absolute left-0 top-full z-50 w-56 rounded-lg border border-slate-200 bg-white py-2 opacity-0 shadow-lg transition-all group-hover:visible group-hover:opacity-100">
+              {externalDashboards.map((d) => (
+                <Link
+                  key={d.slug}
+                  to={`/dashboard/${d.slug}`}
+                  className="block px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-blue-50 hover:text-blue-900"
+                >
+                  {d.title}
+                </Link>
+              ))}
+            </div>
+          </div>
         </nav>
 
         <div className="flex items-center gap-4">
@@ -125,8 +177,30 @@ export default function App() {
   }, []);
 
   if (loading) return <div className="flex h-screen items-center justify-center">Memuat…</div>;
-  if (!user) return <Login onLogin={setUser} />;
 
+  /* ===== Guest: landing publik + login ===== */
+  if (!user) {
+    return (
+      <Routes>
+        <Route element={<PortalLayout />}>
+          <Route path="/" element={<PortalHome />} />
+          <Route path="/berita" element={<PortalNews />} />
+          <Route path="/berita/:slug" element={<NewsDetailRoute />} />
+          <Route path="/publikasi" element={<PortalPublication />} />
+          <Route path="/publikasi/:slug" element={<PublicationDetailRoute />} />
+          <Route path="/profil/kedeputian" element={<PortalDeputy />} />
+          <Route path="/profil/unit/:slug" element={<UnitRoute />} />
+          <Route path="/profil/pimpinan/:slug" element={<LeaderRoute />} />
+          <Route path="/layanan/:slug" element={<ServiceRoute />} />
+          <Route path="/dashboard/:slug" element={<DashboardRoute />} />
+        </Route>
+        <Route path="/login" element={<Login onLogin={setUser} />} />
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
+    );
+  }
+
+  /* ===== User: internal app ===== */
   return (
     <div className="min-h-screen">
       <Topbar />
@@ -140,6 +214,8 @@ export default function App() {
           <Route path="/playground" element={<Playground />} />
           <Route path="/documents" element={<Documents />} />
           <Route path="/admin" element={user.is_admin ? <Admin /> : <Navigate to="/playground" />} />
+          <Route path="/dashboard/:slug" element={<DashboardRoute />} />
+          <Route path="*" element={<Navigate to="/playground" />} />
         </Routes>
       </main>
       <Footer />
