@@ -18,8 +18,8 @@ __pycache__/
 *.pyc
 .venv/
 
-# Data (uploads & raw files — tidak ikut git)
-data/
+# Data (uploads & raw files — tidak ikut git; hanya di root, bukan source src/data)
+/data/
 .test-data/
 
 # OS
