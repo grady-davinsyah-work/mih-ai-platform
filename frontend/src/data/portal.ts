@@ -759,4 +759,9 @@ export const portalMenus: PortalMenuItem[] = [
     status: "public",
     children: services.map((s) => ({ name: s.name, path: "/layanan/" + s.slug })),
   },
+  {
+    name: "Dashboard",
+    status: "private",
+    children: dashboards.map((d) => ({ name: d.title, path: "/dashboard/" + d.slug })),
+  },
 ];

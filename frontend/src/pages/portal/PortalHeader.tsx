@@ -1,12 +1,13 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { portalImages, portalMenus, type PortalMenuItem } from "../../data/portal";
+import { usePortalAuth } from "./PortalLayout";
 
 /*
  * Header publik landpage — reproduksi `renderHeader()` dari PMP Portal.html.
  * Dropdown memakai CSS hover asli (.dropdown:hover .dropdown-panel).
- * Tombol Login → /login (autentikasi nyata MIH), menggantikan simulasi
- * window.handleAuthAction() di file statis.
+ * Login-aware: menu dengan status "private" hanya muncul saat user login,
+ * tombol berubah Login → Logout, dan muncul tautan ke aplikasi internal.
  */
 export default function PortalHeader() {
   const today = new Date().toLocaleDateString("id-ID", {
@@ -16,6 +17,11 @@ export default function PortalHeader() {
   });
   const [mobileOpen, setMobileOpen] = useState(false);
   const [openSubmenu, setOpenSubmenu] = useState<string | null>(null);
+
+  const { user, onLogout } = usePortalAuth();
+  const isLoggedIn = !!user;
+
+  const visibleMenus = portalMenus.filter((m) => m.status === "public" || isLoggedIn);
 
   const closeMobile = () => {
     setMobileOpen(false);
@@ -41,12 +47,26 @@ export default function PortalHeader() {
           </Link>
 
           <nav className="desktop-nav">
-            {portalMenus.map((menu) => renderMenuItem(menu))}
+            {visibleMenus.map((menu) => renderMenuItem(menu))}
+            {isLoggedIn && (
+              <Link to="/playground" className="nav-link">Portal Dokumen</Link>
+            )}
           </nav>
 
-          <Link to="/login" className="button primary">
-            Login
-          </Link>
+          {isLoggedIn ? (
+            <div className="flex items-center gap-3">
+              <span style={{ fontSize: "0.85rem", fontWeight: 700, color: "var(--slate-600)" }}>
+                {user!.name}
+              </span>
+              <button onClick={onLogout} className="button primary">
+                Logout
+              </button>
+            </div>
+          ) : (
+            <Link to="/login" className="button primary">
+              Login
+            </Link>
+          )}
 
           <button
             className="mobile-toggle"
@@ -59,12 +79,23 @@ export default function PortalHeader() {
         </div>
 
         <nav className={`mobile-menu${mobileOpen ? " open" : ""}`} id="mobile-menu">
-          {portalMenus.map((menu) =>
+          {visibleMenus.map((menu) =>
             renderMobileItem(menu, closeMobile, openSubmenu, setOpenSubmenu)
           )}
-          <Link to="/login" className="button primary" onClick={closeMobile}>
-            Login
-          </Link>
+          {isLoggedIn && (
+            <Link to="/playground" className="nav-link" onClick={closeMobile}>
+              Portal Dokumen
+            </Link>
+          )}
+          {isLoggedIn ? (
+            <button className="button primary" onClick={() => { closeMobile(); onLogout(); }}>
+              Logout
+            </button>
+          ) : (
+            <Link to="/login" className="button primary" onClick={closeMobile}>
+              Login
+            </Link>
+          )}
         </nav>
       </header>
     </>

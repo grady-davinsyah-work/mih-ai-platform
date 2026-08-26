@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Routes, Route, NavLink, Navigate, Link, useParams } from "react-router-dom";
+import { Routes, Route, NavLink, Navigate, Link, Outlet, useParams } from "react-router-dom";
 import { api, type User } from "./api";
 import Login from "./pages/Login";
 import Playground from "./pages/Playground";
@@ -168,6 +168,20 @@ function Footer() {
   );
 }
 
+/* Layout aplikasi internal (Playground/Documents/Admin) */
+function InternalLayout({ user, onLogout }: { user: User; onLogout: () => void }) {
+  return (
+    <div className="min-h-screen">
+      <Topbar />
+      <SiteHeader user={user} onLogout={onLogout} />
+      <main className="container pt-10">
+        <Outlet />
+      </main>
+      <Footer />
+    </div>
+  );
+}
+
 export default function App() {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
@@ -201,24 +215,33 @@ export default function App() {
   }
 
   /* ===== User: internal app ===== */
+  const handleLogout = () => api.logout().finally(() => setUser(null));
+
   return (
-    <div className="min-h-screen">
-      <Topbar />
-      <SiteHeader
-        user={user}
-        onLogout={() => api.logout().finally(() => setUser(null))}
-      />
-      <main className="container pt-10">
-        <Routes>
-          <Route path="/" element={<Navigate to="/playground" />} />
-          <Route path="/playground" element={<Playground />} />
-          <Route path="/documents" element={<Documents />} />
-          <Route path="/admin" element={user.is_admin ? <Admin /> : <Navigate to="/playground" />} />
-          <Route path="/dashboard/:slug" element={<DashboardRoute />} />
-          <Route path="*" element={<Navigate to="/playground" />} />
-        </Routes>
-      </main>
-      <Footer />
-    </div>
+    <Routes>
+      {/* Landing page tetap tampil saat login — menu/tautan private ikut muncul.
+          Dashboard route di sini agar halaman dashboard memakai chrome portal. */}
+      <Route element={<PortalLayout user={user} onLogout={handleLogout} />}>
+        <Route path="/" element={<PortalHome />} />
+        <Route path="/berita" element={<PortalNews />} />
+        <Route path="/berita/:slug" element={<NewsDetailRoute />} />
+        <Route path="/publikasi" element={<PortalPublication />} />
+        <Route path="/publikasi/:slug" element={<PublicationDetailRoute />} />
+        <Route path="/profil/kedeputian" element={<PortalDeputy />} />
+        <Route path="/profil/unit/:slug" element={<UnitRoute />} />
+        <Route path="/profil/pimpinan/:slug" element={<LeaderRoute />} />
+        <Route path="/layanan/:slug" element={<ServiceRoute />} />
+        <Route path="/dashboard/:slug" element={<DashboardRoute />} />
+      </Route>
+
+      {/* Aplikasi internal (dari header landing via "Portal Dokumen") */}
+      <Route element={<InternalLayout user={user} onLogout={handleLogout} />}>
+        <Route path="/playground" element={<Playground />} />
+        <Route path="/documents" element={<Documents />} />
+        <Route path="/admin" element={user.is_admin ? <Admin /> : <Navigate to="/playground" />} />
+      </Route>
+
+      <Route path="*" element={<Navigate to="/" replace />} />
+    </Routes>
   );
 }

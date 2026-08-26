@@ -1,6 +1,7 @@
 import { useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { news, publications, externalLinks } from "../../data/portal";
+import { usePortalAuth } from "./PortalLayout";
 
 /*
  * Beranda publik — reproduksi `renderHomePage()` dari PMP Portal.html.
@@ -11,6 +12,7 @@ import { news, publications, externalLinks } from "../../data/portal";
  * - Grid publikasi memakai `publications-grid-home`.
  */
 export default function PortalHome() {
+  const { user } = usePortalAuth();
   const limitedNews = news.slice(0, 5);
   const [slide, setSlide] = useState(0);
   const linksScrollerRef = useRef<HTMLDivElement>(null);
@@ -22,7 +24,7 @@ export default function PortalHome() {
     else setSlide(index);
   };
 
-  const visibleExternalLinks = externalLinks.filter((l) => l.status === "public");
+  const visibleExternalLinks = externalLinks.filter((l) => l.status === "public" || !!user);
 
   const scrollLinks = (direction: "prev" | "next") => {
     linksScrollerRef.current?.scrollBy({

@@ -15,7 +15,7 @@ export default function Login({ onLogin }: { onLogin: (u: User) => void }) {
     try {
       const r = await api.login(email, password);
       onLogin(r.user);
-      navigate("/playground", { replace: true });
+      navigate("/", { replace: true });
     } catch (err: any) {
       setError(err.message);
     }
