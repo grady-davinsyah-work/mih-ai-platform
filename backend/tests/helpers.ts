@@ -13,6 +13,6 @@ export async function applySchema() {
 
 export async function truncateAll() {
   await testDb.query(
-    "TRUNCATE usage_logs, api_tokens, chunks, documents, users RESTART IDENTITY CASCADE"
+    "TRUNCATE usage_logs, api_tokens, chunks, documents, messages, conversations, users RESTART IDENTITY CASCADE"
   );
 }
