@@ -22,3 +22,23 @@ export async function generateAnswer(question: string, context: string): Promise
   });
   return resp.choices[0]?.message?.content ?? "";
 }
+
+export async function* streamAnswer(question: string, context: string): AsyncGenerator<string> {
+  if (config.llmProvider === "mock") {
+    yield `Jawaban (mock) berdasarkan [1]: ${question}`;
+    return;
+  }
+  const client = new OpenAI({ apiKey: config.openaiApiKey });
+  const stream = await client.chat.completions.create({
+    model: config.openaiModel,
+    messages: [
+      { role: "system", content: SYSTEM_PROMPT },
+      { role: "user", content: `Pertanyaan: ${question}\n\nKonteks:\n${context}` },
+    ],
+    stream: true,
+  });
+  for await (const part of stream) {
+    const delta = part.choices?.[0]?.delta?.content;
+    if (delta) yield delta;
+  }
+}
