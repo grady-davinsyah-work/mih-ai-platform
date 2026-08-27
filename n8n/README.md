@@ -32,32 +32,69 @@ GRANT SELECT ON chunks, documents TO mih_rag_ro;
 
 Ganti `<ganti>` dengan password yang kuat. Simpan kredensial ini untuk node Postgres di n8n.
 
-## 4. Langkah build workflow "RAG Retrieval" (di UI n8n)
+## 4. Langkah build workflow "RAG Retrieval"
 
-Node per node: **Webhook (POST)** → **OpenAI Embeddings** → **Postgres** → **Code** → **Respond to Webhook** → percabangan **error** → **500**.
+Ada dua cara: **A — impor file** (disarankan), atau **B — bangun manual** (fallback, bila impor bermasalah).
+
+### Cara A — Impor file `n8n/rag-retrieval.json` (disarankan)
+
+Workflow siap pakai sudah disediakan di repo: `n8n/rag-retrieval.json`.
+
+1. Buka n8n → **Workflows** → tombol *Import from File* → pilih `n8n/rag-retrieval.json`.
+2. Buka workflow hasil impor ("MIH RAG Retrieval").
+3. **Pilih kredensial** di dua node yang ditandai *missing credential*:
+   - **Embed Pertanyaan** → pilih kredensial **OpenAI API** (harus pakai key yang sama dengan MIH).
+   - **Cari Chunk** → pilih kredensial **Postgres** (user read-only `mih_rag_ro` dari Bagian 3, atau user MIH biasa).
+4. **Aktifkan** workflow (toggle *Active*).
+5. Salin **URL produksi** webhook (tampil di node Webhook) → pakai sebagai `{WEBHOOK_URL}` di tes curl (Bagian 5).
+
+Rantai node: **Webhook (POST)** → **Embed Pertanyaan** (HTTP Request ke OpenAI `/v1/embeddings`) → **Siapkan SQL** (Code) → **Cari Chunk** (Postgres) → **Bangun Context** (Code) → **Balas ke MIH** (Respond to Webhook).
+
+Catatan: bila workflow error di tengah, n8n membalas 500 → MIH otomatis fallback ke query lokal (degradasi). Tidak ada node error khusus yang perlu ditambah.
+
+### Cara B — Bangun manual (bila impor bermasalah)
+
+Node per node: **Webhook (POST)** → **HTTP Request (embedding)** → **Postgres** → **Code** → **Respond to Webhook**.
 
 **Node 1 — Webhook**
 
 Node *Webhook*, mode *Receive*, method **POST**, *Respond* = *Using "Respond to Webhook" Node*. Catat URL webhook untuk tes curl (pakai sebagai `{WEBHOOK_URL}`).
 
-**Node 2 — OpenAI Embeddings**
+**Node 2 — HTTP Request (embedding pertanyaan)**
 
-Model `text-embedding-3-small`, input = `question`.
+Node *HTTP Request*: method **POST**, URL `https://api.openai.com/v1/embeddings`, *Authentication* = *Generic Credential Type* → **OpenAI API** (key yang sama dengan MIH). *Body* = *JSON*, isi:
+```json
+{ "model": "text-embedding-3-small", "input": "{{ $json.body.question }}" }
+```
+Model **WAJIB** `text-embedding-3-small` (sama dengan `EMBEDDING_MODEL` MIH).
 
-**Node 3 — Postgres (pgvector)**
+> Catatan: jangan pakai node *OpenAI Embeddings* (kategori AI) di workflow ini — node itu sub-node (input kosong, hanya tersambung ke AI Agent), tidak bisa dirantai dari Webhook biasa. Embedding via HTTP Request menghasilkan vektor yang sama.
 
-Query (parameter: `$1` = embedding pertanyaan array float, `$2` = `vector_k`):
+**Node 3 — Code "Siapkan SQL"**
 
-```sql
-SELECT c.id, c.content, c.page_or_slide, c.section_title,
+Ambil `embedding` dari respons HTTP (`$json.data[0].embedding`) dan `vector_k` dari body webhook; bangun query lengkap:
+
+```js
+const body = $('Webhook').first().json.body || {};
+const emb = $json.data[0].embedding;
+if (!Array.isArray(emb) || emb.length === 0) throw new Error('embedding tidak valid');
+const vectorK = Number(body.vector_k) || 8;
+const query = `SELECT c.id, c.content, c.page_or_slide, c.section_title,
        d.id AS document_id, d.filename, d.file_type
   FROM chunks c JOIN documents d ON d.id = c.document_id
  WHERE c.is_outdated = FALSE AND d.status = 'completed'
- ORDER BY c.embedding <=> $1::vector
- LIMIT $2
+ ORDER BY c.embedding <=> '[${emb.join(',')}]'::vector
+ LIMIT ${vectorK}`;
+return [{ json: { query }, pairedItem: { item: 0 } }];
 ```
 
-**Node 4 — Code**
+(Query SQL sama seperti lampiran spec; embedding dipakai langsung sebagai literal vektor.)
+
+**Node 4 — Postgres (pgvector)**
+
+Node *Postgres*, operation **Execute Query**, query = `={{ $json.query }}` (dari node Code di atas). Kredensial: user read-only `mih_rag_ro` dari Bagian 3.
+
+**Node 5 — Code "Bangun Context"**
 
 Per baris hasil: tambah `label = index + 1`; bangun `context` per baris dengan format:
 
@@ -70,13 +107,13 @@ Per baris hasil: tambah `label = index + 1`; bangun `context` per baris dengan f
 {content}
 ```
 
-**Node 5 — Respond to Webhook**
+Return: `[{ json: { labeled, context } }]`, dengan `labeled` = array hasil + field `label`.
 
-Balas JSON `{ labeled, context }`, dengan `labeled` = array hasil + field `label`.
+**Node 6 — Respond to Webhook**
 
-**Node 6 — Error handling**
+*Respond With* = **JSON**, *Response Body* = `={{ JSON.stringify($json) }}`, *Response Code* = `200`. Balas `{ labeled, context }`.
 
-Percabangan error → **Respond to Webhook** status **500**, body `{ "error": "..." }`.
+**Error handling** — tidak perlu node khusus: bila workflow error, n8n membalas 500, dan MIH otomatis fallback ke query lokal (degradasi).
 
 ## 5. Tes curl
 
