@@ -93,7 +93,8 @@ def test_prune_removed_hapus_hanya_file_hilang(tmp_path):
     ])
     n = ingest.prune_removed(conn)
     assert n == 1
-    assert "source='drive'" in conn.calls[0][0]  # SELECT hanya row source=drive
+    sql, params = conn.calls[0]  # SELECT hanya row source=drive
+    assert "source=%s" in sql and params[0] == "drive"
     deletes = [c for c in conn.calls if c[0].startswith("DELETE FROM documents")]
     assert deletes[0][1] == (2,)
 
