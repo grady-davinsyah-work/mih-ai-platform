@@ -42,6 +42,9 @@ def chunk_segments(segments: list[Segment], *, min_tokens: int = 300,
     chunks: list[Chunk] = []
     idx = 0
     for seg in segments:
+        # PostgreSQL menolak NUL byte; beberapa PDF/docx kotor menyisipkannya.
+        if "\x00" in seg.text:
+            seg.text = seg.text.replace("\x00", "")
         tail = ""
         buffer = ""
         for sent in split_sentences(seg.text):
