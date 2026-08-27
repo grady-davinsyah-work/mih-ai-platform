@@ -57,13 +57,15 @@ def test_drive_sync_panggil_rclone(monkeypatch):
 
     monkeypatch.setattr(ingest.subprocess, "run", fake_run)
     monkeypatch.setenv("DRIVE_REMOTE", "gdrive:folder-rag")
+    monkeypatch.delenv("RCLONE_CONFIG", raising=False)
     assert ingest.drive_sync() is True
     cmd = calls[0]
     assert cmd[0] == "rclone" and cmd[1] == "sync"
     assert "gdrive:folder-rag" in cmd
-    assert "/data/raw" in cmd
+    assert "/data/raw/drive" in cmd
     assert "--include" in cmd
     assert "*.pdf" in cmd and "*.pptx" in cmd and "*.docx" in cmd
+    assert "--ignore-case" in cmd
 
 
 def test_drive_sync_lewati_jika_env_kosong(monkeypatch):
@@ -91,6 +93,7 @@ def test_prune_removed_hapus_hanya_file_hilang(tmp_path):
     ])
     n = ingest.prune_removed(conn)
     assert n == 1
+    assert "source='drive'" in conn.calls[0][0]  # SELECT hanya row source=drive
     deletes = [c for c in conn.calls if c[0].startswith("DELETE FROM documents")]
     assert deletes[0][1] == (2,)
 

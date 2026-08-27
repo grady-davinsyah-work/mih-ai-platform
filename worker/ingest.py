@@ -40,6 +40,15 @@ def scan_dir(conn, dirpath: str) -> int:
         sha = sha256_file(path)
         if ensure_raw_document(conn, path.name, str(path), sha, classify_file(path.name), "drive"):
             added += 1
+        else:
+            # sha sudah ada — row lama dari kanal raw (mis. sebelum migrasi) di-promosikan
+            # ke source='drive' agar hapus dari Drive ikut menghapusnya. Upload manual
+            # (/data/uploaded) tidak pernah kena (file_path-nya di luar RAW_DIR).
+            raw_dir = os.environ.get("RAW_DIR", "/data/raw")
+            conn.execute(
+                "UPDATE documents SET source='drive' WHERE sha256=%s AND file_path LIKE %s AND source <> 'drive'",
+                (sha, raw_dir + "/%"),
+            )
     conn.commit()
     return added
 
@@ -82,15 +91,20 @@ def process_pending(conn, limit: int = 10) -> int:
 
 
 def drive_sync() -> bool:
-    """Sinkronisasi folder Google Drive ke /data/raw via rclone. Return True bila sinkron."""
+    """Sinkronisasi folder Google Drive ke /data/raw/drive via rclone. Return True bila sinkron."""
     remote = os.environ.get("DRIVE_REMOTE", "")
     if not remote:
         print("DRIVE_REMOTE tidak diset — lewati sinkronisasi Drive")
         return False
-    dest = os.environ.get("RAW_DIR", "/data/raw")
+    dest = os.environ.get("DRIVE_DEST", "/data/raw/drive")
+    conf = os.environ.get("RCLONE_CONFIG", "")
+    if conf and not Path(conf).is_file():
+        raise RuntimeError(f"rclone.conf tidak ditemukan: {conf} (jalankan rclone config lalu scp ke server)")
+    Path(dest).mkdir(parents=True, exist_ok=True)
     cmd = [
         "rclone", "sync", remote, dest,
         "--include", "*.pdf", "--include", "*.pptx", "--include", "*.docx",
+        "--ignore-case",
         "--transfers", "4", "--log-level", "ERROR",
     ]
     proc = subprocess.run(cmd, capture_output=True, text=True)
@@ -117,6 +131,8 @@ def prune_removed(conn) -> int:
 
 def maybe_drive_sync(conn, last_sync: float, interval_min: int) -> float:
     """Sync Drive bila interval terlampaui; hapus dokumen yang file-nya hilang."""
+    if not os.environ.get("DRIVE_REMOTE"):
+        return last_sync
     now = time.time()
     if now - last_sync < interval_min * 60:
         return last_sync
