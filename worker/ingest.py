@@ -60,7 +60,8 @@ def process_document(conn, doc) -> int:
     path = Path(doc["file_path"])
     if not path.exists():
         raise FileNotFoundError(f"file tidak ditemukan: {path}")
-    segments = parse_document(path, doc["file_extension"])
+    ocr = os.environ.get("OCR_ENABLED", "1") in ("1", "true", "True")
+    segments = parse_document(path, doc["file_extension"], ocr=ocr)
     ocr_pages = [s.page_or_slide for s in segments if s.needs_ocr]
     chunks = chunk_segments(segments)
     if not chunks:
