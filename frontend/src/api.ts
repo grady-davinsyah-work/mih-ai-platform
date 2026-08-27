@@ -35,6 +35,23 @@ export interface ContentItem {
   created_at: string;
   updated_at: string;
 }
+export interface Conversation {
+  id: number;
+  title: string;
+  updated_at: string;
+  message_count: number;
+}
+export interface ChatMessage {
+  id: number;
+  role: "user" | "assistant";
+  content: string;
+  citations: Citation[];
+  created_at: string;
+}
+export interface ChatEvent {
+  event: "meta" | "delta" | "citations" | "done" | "error";
+  data: any;
+}
 
 async function req<T>(path: string, init?: RequestInit): Promise<T> {
   const headers: Record<string, string> =
@@ -80,4 +97,50 @@ export const api = {
     req<ContentItem>(`/api/admin/content/${id}`, { method: "PUT", body: JSON.stringify(c) }),
   deleteContent: (id: number) =>
     req<{ ok: boolean }>(`/api/admin/content/${id}`, { method: "DELETE" }),
+  conversations: () => req<Conversation[]>("/api/conversations"),
+  createConversation: () =>
+    req<{ id: number }>("/api/conversations", { method: "POST", body: JSON.stringify({}) }),
+  deleteConversation: (id: number) =>
+    req<{ ok: boolean }>(`/api/conversations/${id}`, { method: "DELETE" }),
+  conversationMessages: (id: number) =>
+    req<ChatMessage[]>(`/api/conversations/${id}/messages`),
+  chat: async (question: string, conversationId: number | null, onEvent: (e: ChatEvent) => void) => {
+    const res = await fetch("/api/chat", {
+      method: "POST",
+      credentials: "same-origin",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ question, conversation_id: conversationId }),
+    });
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}));
+      throw new Error((body as any).error ?? `HTTP ${res.status}`);
+    }
+    if (!res.body) throw new Error("streaming tidak didukung");
+    const reader = res.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = "";
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+      let idx: number;
+      while ((idx = buffer.indexOf("\n\n")) >= 0) {
+        const raw = buffer.slice(0, idx);
+        buffer = buffer.slice(idx + 2);
+        let event = "message";
+        let data = "";
+        for (const line of raw.split("\n")) {
+          if (line.startsWith("event:")) event = line.slice(6).trim();
+          else if (line.startsWith("data:")) data = line.slice(5).trim();
+        }
+        if (data) {
+          try {
+            onEvent({ event: event as ChatEvent["event"], data: JSON.parse(data) });
+          } catch {
+            /* abaikan data rusak */
+          }
+        }
+      }
+    }
+  },
 };
