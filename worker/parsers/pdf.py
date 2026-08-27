@@ -17,15 +17,23 @@ def parse_pdf(path: Path, ocr: bool = False) -> list[Segment]:
 
 
 def _ocr_page(pdf_path: str, page_no: int) -> str:
-    """OCR satu halaman PDF scan via PyMuPDF (render) + pytesseract."""
-    import fitz  # PyMuPDF
+    """OCR satu halaman PDF scan via pdftoppm (render) + pytesseract."""
+    import subprocess
+    import tempfile
+    from pathlib import Path
+
     import pytesseract
 
-    doc = fitz.open(pdf_path)
-    try:
-        pix = doc[page_no - 1].get_pixmap(dpi=300)
-    finally:
-        doc.close()
-    img_bytes = pix.tobytes("png")
-    # ind+eng: dokumen utama berbahasa Indonesia; eng sebagai pelengkap istilah.
-    return pytesseract.image_to_string(img_bytes, lang="ind+eng").strip()
+    with tempfile.TemporaryDirectory() as td:
+        prefix = Path(td) / "page"
+        # pdftoppm lebih robust terhadap kompresi gambar yang PyMuPDF tak dukung
+        # ("Unsupported image object"). -f/-l sama = render satu halaman saja.
+        subprocess.run(
+            ["pdftoppm", "-f", str(page_no), "-l", str(page_no), "-r", "300", "-png", pdf_path, str(prefix)],
+            check=True, capture_output=True,
+        )
+        pngs = sorted(Path(td).glob("page-*.png"))
+        if not pngs:
+            return ""
+        # ind+eng: dokumen utama berbahasa Indonesia; eng sebagai pelengkap istilah.
+        return pytesseract.image_to_string(str(pngs[0]), lang="ind+eng").strip()
