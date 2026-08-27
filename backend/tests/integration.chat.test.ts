@@ -117,3 +117,18 @@ test("POST /api/chat tanpa auth -> 401", async () => {
   const res = await request(app).post("/api/chat").send({ question: "x" });
   expect(res.status).toBe(401);
 });
+
+test("POST /api/chat men-set judul saat conversation kosong (dibuat via UI)", async () => {
+  const created = await request(app).post("/api/conversations").set("Cookie", cookie);
+  const convId = created.body.id;
+  const convBefore = await testDb.query("SELECT title FROM conversations WHERE id=$1", [convId]);
+  expect(convBefore.rows[0].title).toBe("");
+
+  await request(app)
+    .post("/api/chat")
+    .set("Cookie", cookie)
+    .send({ question: "Apa itu rencana pembangunan makro?", conversation_id: convId });
+
+  const convAfter = await testDb.query("SELECT title FROM conversations WHERE id=$1", [convId]);
+  expect(convAfter.rows[0].title).toBe("Apa itu rencana pembangunan makro?");
+});

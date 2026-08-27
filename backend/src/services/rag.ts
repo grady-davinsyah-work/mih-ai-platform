@@ -1,4 +1,3 @@
-import { Pool } from "pg";
 import { pool } from "../db";
 import { config } from "../config";
 import { generateAnswer, streamAnswer } from "./llm";
@@ -29,7 +28,7 @@ export function extractCitedIndices(answer: string): Set<number> {
   return set;
 }
 
-export async function search(question: string) {
+export async function search(question: string): Promise<{ labeled: SearchRow[]; context: string }> {
   const [qv] = await embedTexts([question]);
   const { rows } = await pool.query(
     `SELECT c.id, c.content, c.page_or_slide, c.section_title,

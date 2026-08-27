@@ -80,7 +80,10 @@ router.post("/chat", askAuth, async (req, res) => {
     "INSERT INTO messages (conversation_id, role, content) VALUES ($1,'user',$2)",
     [conversationId, question]
   );
-  await pool.query("UPDATE conversations SET updated_at=now() WHERE id=$1", [conversationId]);
+  await pool.query(
+    "UPDATE conversations SET title = $2, updated_at = now() WHERE id = $1 AND title = ''",
+    [conversationId, question.slice(0, 50)]
+  );
 
   res.writeHead(200, {
     "Content-Type": "text/event-stream",
