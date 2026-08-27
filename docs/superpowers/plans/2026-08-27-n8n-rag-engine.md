@@ -15,6 +15,7 @@
 - String tampilan/user-facing tetap Bahasa Indonesia (konsisten dengan codebase).
 - Tidak ada secret yang di-commit (`.env.prod` sudah di .gitignore; template hanya placeholder).
 - Test backend: `cd backend && bun test` harus tetap hijau. `tests/setup.ts` men-set `LLM_PROVIDER=mock`; `stream.test.ts` bergantung pada jalur lokal.
+- **DB test backend lokal:** `postgres://mih:mih@localhost:5434/mih_test` (container `mih-dev-db-5434`, pgvector sudah ada; port 5432 adalah proyek arthakarya — JANGAN pakai). Semua perintah test backend memakai prefix `TEST_DATABASE_URL=postgres://mih:mih@localhost:5434/mih_test`.
 - `search(question)` mempertahankan signature `Promise<{ labeled: SearchRow[]; context: string }>` — pemanggil (`ask`, `askStream`) tidak berubah.
 - Webhook contract dan format `context`/`labeled` identik dengan yang tercatat di spec (lampiran).
 - Workflow n8n dibangun manual di UI n8n oleh user (di luar repo); repo hanya berisi README setup.
@@ -54,7 +55,7 @@ N8N_RAG_WEBHOOK_URL=
 
 - [ ] **Step 4: Verifikasi**
 
-Run: `cd backend && bun test`
+Run: `cd backend && TEST_DATABASE_URL=postgres://mih:mih@localhost:5434/mih_test bun test`
 Expected: semua test tetap hijau (tidak ada perubahan perilaku).
 
 - [ ] **Step 5: Commit**
@@ -190,7 +191,7 @@ test("ragWebhookUrl kosong → query lokal, fetch tidak dipanggil", async () => 
 
 - [ ] **Step 2: Jalankan, pastikan gagal**
 
-Run: `cd backend && bun test tests/rag-webhook.test.ts`
+Run: `cd backend && TEST_DATABASE_URL=postgres://mih:mih@localhost:5434/mih_test bun test tests/rag-webhook.test.ts`
 Expected: FAIL — webhook belum dipanggil.
 
 - [ ] **Step 3: Refactor `rag.ts`**
@@ -255,12 +256,12 @@ export async function search(question: string): Promise<{ labeled: SearchRow[]; 
 
 - [ ] **Step 4: Jalankan test file**
 
-Run: `cd backend && bun test tests/rag-webhook.test.ts`
+Run: `cd backend && TEST_DATABASE_URL=postgres://mih:mih@localhost:5434/mih_test bun test tests/rag-webhook.test.ts`
 Expected: PASS (5 test).
 
 - [ ] **Step 5: Jalankan seluruh test backend**
 
-Run: `cd backend && bun test`
+Run: `cd backend && TEST_DATABASE_URL=postgres://mih:mih@localhost:5434/mih_test bun test`
 Expected: PASS — termasuk `stream.test.ts` (provider mock, `ragWebhookUrl` kosong → jalur lokal).
 
 - [ ] **Step 6: Commit**
