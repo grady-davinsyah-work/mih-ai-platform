@@ -221,7 +221,14 @@ function MessageBubble({ message }: { message: ChatMessage }) {
                     <p key={i} className="flex items-baseline gap-2 text-sm leading-relaxed text-slate-500">
                       <CitationPin index={i + 1} />
                       <span>
-                        <span className="font-medium text-slate-800">{c.filename}</span>
+                        <a
+                          href={`/api/documents/${c.document_id}/file`}
+                          download
+                          className="font-medium text-blue-700 hover:underline"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          {c.filename}
+                        </a>
                         {c.page_or_slide != null && <span> — halaman/slide {c.page_or_slide}</span>}
                         {c.section_title && <span> — {c.section_title}</span>}
                       </span>
