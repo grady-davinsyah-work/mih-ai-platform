@@ -108,3 +108,6 @@ CREATE TABLE IF NOT EXISTS messages (
 );
 
 CREATE INDEX IF NOT EXISTS messages_conversation_idx ON messages (conversation_id, created_at);
+
+ALTER TABLE documents ADD COLUMN IF NOT EXISTS source TEXT NOT NULL DEFAULT 'upload';
+CREATE INDEX IF NOT EXISTS documents_source_idx ON documents (source);

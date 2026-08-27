@@ -37,7 +37,7 @@ def scan_dir(conn, dirpath: str) -> int:
         if file_path_ext(path.name) not in SUPPORTED_EXTENSIONS:
             continue
         sha = sha256_file(path)
-        if ensure_raw_document(conn, path.name, str(path), sha, classify_file(path.name)):
+        if ensure_raw_document(conn, path.name, str(path), sha, classify_file(path.name), "drive"):
             added += 1
     conn.commit()
     return added

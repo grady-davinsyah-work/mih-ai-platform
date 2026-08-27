@@ -16,7 +16,7 @@ def file_path_ext(filename: str) -> str:
     return Path(filename).suffix.lower().lstrip(".")
 
 
-def ensure_raw_document(conn, filename: str, file_path: str, sha256: str, file_type: str) -> bool:
+def ensure_raw_document(conn, filename: str, file_path: str, sha256: str, file_type: str, source: str = "upload") -> bool:
     """Insert dokumen pending jika hash belum ada. Return True jika baru."""
     if file_path_ext(filename) not in SUPPORTED_EXTENSIONS:
         return False
@@ -24,9 +24,9 @@ def ensure_raw_document(conn, filename: str, file_path: str, sha256: str, file_t
     if exists:
         return False
     conn.execute(
-        "INSERT INTO documents (filename, file_type, file_extension, sha256, file_path, status) "
-        "VALUES (%s, %s, %s, %s, %s, 'pending')",
-        (filename, file_type, file_path_ext(filename), sha256, file_path),
+        "INSERT INTO documents (filename, file_type, file_extension, sha256, file_path, status, source) "
+        "VALUES (%s, %s, %s, %s, %s, 'pending', %s)",
+        (filename, file_type, file_path_ext(filename), sha256, file_path, source),
     )
     return True
 
