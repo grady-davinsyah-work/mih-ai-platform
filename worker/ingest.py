@@ -1,6 +1,7 @@
 import argparse
 import hashlib
 import os
+import subprocess
 import time
 from pathlib import Path
 
@@ -80,14 +81,65 @@ def process_pending(conn, limit: int = 10) -> int:
     return done
 
 
+def drive_sync() -> bool:
+    """Sinkronisasi folder Google Drive ke /data/raw via rclone. Return True bila sinkron."""
+    remote = os.environ.get("DRIVE_REMOTE", "")
+    if not remote:
+        print("DRIVE_REMOTE tidak diset — lewati sinkronisasi Drive")
+        return False
+    dest = os.environ.get("RAW_DIR", "/data/raw")
+    cmd = [
+        "rclone", "sync", remote, dest,
+        "--include", "*.pdf", "--include", "*.pptx", "--include", "*.docx",
+        "--transfers", "4", "--log-level", "ERROR",
+    ]
+    proc = subprocess.run(cmd, capture_output=True, text=True)
+    if proc.returncode != 0:
+        raise RuntimeError(f"rclone sync gagal (rc={proc.returncode}): {proc.stderr.strip()}")
+    print(f"drive-sync: ok dari {remote}")
+    return True
+
+
+def prune_removed(conn) -> int:
+    """Hapus dokumen source='drive' yang file-nya tidak lagi ada di disk. Return jumlah terhapus."""
+    rows = conn.execute(
+        "SELECT id, file_path FROM documents WHERE source='drive'"
+    ).fetchall()
+    removed = 0
+    for r in rows:
+        if not Path(r["file_path"]).exists():
+            conn.execute("DELETE FROM documents WHERE id=%s", (r["id"],))
+            removed += 1
+    if removed:
+        conn.commit()
+    return removed
+
+
+def maybe_drive_sync(conn, last_sync: float, interval_min: int) -> float:
+    """Sync Drive bila interval terlampaui; hapus dokumen yang file-nya hilang."""
+    now = time.time()
+    if now - last_sync < interval_min * 60:
+        return last_sync
+    try:
+        if drive_sync():
+            scan_dir(conn, os.environ.get("RAW_DIR", "/data/raw"))
+        prune_removed(conn)
+    except Exception as e:
+        print("drive-sync error:", e)
+    return now
+
+
 def watch():
     conn = connect()
     raw_dir = os.environ.get("RAW_DIR", "/data/raw")
     interval = int(os.environ.get("INGEST_INTERVAL_SEC", "30"))
+    sync_interval_min = int(os.environ.get("DRIVE_SYNC_INTERVAL_MIN", "15"))
     Path(raw_dir).mkdir(parents=True, exist_ok=True)
-    print(f"watch aktif: {raw_dir} setiap {interval}s")
+    print(f"watch aktif: {raw_dir} setiap {interval}s, drive-sync tiap {sync_interval_min}m")
+    last_sync = 0.0
     while True:
         try:
+            last_sync = maybe_drive_sync(conn, last_sync, sync_interval_min)
             added = scan_dir(conn, raw_dir)
             if added:
                 print(f"scan: {added} dokumen baru diantrekan")
@@ -103,6 +155,7 @@ def main():
     s = sub.add_parser("scan")
     s.add_argument("--dir", default="/data/raw")
     sub.add_parser("watch")
+    sub.add_parser("drive-sync")
     args = parser.parse_args()
 
     conn = connect()
@@ -112,6 +165,14 @@ def main():
         print(f"siap: {n} dokumen baru diantrekan")
     elif args.cmd == "watch":
         watch()
+    elif args.cmd == "drive-sync":
+        if drive_sync():
+            n = scan_dir(conn, os.environ.get("RAW_DIR", "/data/raw"))
+            print(f"drive-sync: {n} dokumen baru diantrekan")
+            process_pending(conn)
+        pruned = prune_removed(conn)
+        if pruned:
+            print(f"drive-sync: {pruned} dokumen terprune")
 
 
 if __name__ == "__main__":
