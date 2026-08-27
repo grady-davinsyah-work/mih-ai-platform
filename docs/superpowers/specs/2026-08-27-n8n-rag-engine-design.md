@@ -76,7 +76,7 @@ ragWebhookUrl: process.env.N8N_RAG_WEBHOOK_URL ?? "",
 ```
 
 **`backend/src/services/rag.ts`** — logika `search()`:
-- Jika `config.ragWebhookUrl` terisi (dan `llmProvider !== "mock"`): POST ke webhook `{ question, vector_k: config.vectorK }`, timeout ~30 detik, parse `{ labeled, context }`.
+- Jika `config.ragWebhookUrl` terisi: POST ke webhook `{ question, vector_k: config.vectorK }`, timeout ~30 detik, parse `{ labeled, context }`.
 - Jika panggilan gagal (error jaringan, status != 2xx, atau format response salah): **fallback ke query SQL lokal yang ada sekarang** (degradasi — RAG tetap jalan saat n8n down), log peringatan.
 - Jika `ragWebhookUrl` kosong: pakai SQL lokal langsung (perilaku saat ini).
 
@@ -89,7 +89,7 @@ ragWebhookUrl: process.env.N8N_RAG_WEBHOOK_URL ?? "",
 - **R1 — n8n = retrieval, LLM di MIH.** Webhook n8n tidak streaming, jadi streaming asli hanya mungkin bila generasi tetap di MIH. n8n sebagai engine penuh (ikut generate) berarti kehilangan streaming per-token → ditolak user.
 - **R2 — Fallback ke SQL lokal.** Kalau n8n down, `/api/ask` tidak boleh mati total; jatuh ke query pgvector langsung (perilaku lama). Biaya: SQL lama tetap dipelihara (duplikasi kecil, satu fungsi).
 - **R3 — Worker tidak berubah.** Vektor sudah ada dan terus diisi worker; n8n baca saja. Tidak ada re-embed dokumen.
-- **R4 — Mode mock diabaikan.** Saat `LLM_PROVIDER=mock` (test lokal), MIH tidak memanggil webhook — langsung SQL lokal, karena embedding mock tidak kompatibel dengan vektor nyata.
+- **R4 — Mode mock tidak butuh guard.** Webhook mode tidak embed lokal, jadi `LLM_PROVIDER=mock` tidak bertabrakan dengan webhook. Untuk dev lokal cukup kosongkan `N8N_RAG_WEBHOOK_URL`. Guard `provider !== "mock"` sengaja TIDAK dipakai supaya jalur fallback bisa diuji di bawah provider mock.
 
 ## File yang Terlibat
 
