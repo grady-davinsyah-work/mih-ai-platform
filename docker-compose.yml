@@ -35,7 +35,7 @@ services:
       RAW_DIR: /data/raw
     volumes:
       - ./data:/data
-      - ./data/rclone/rclone.conf:/data/rclone/rclone.conf:ro
+      - ./data/rclone:/data/rclone
     depends_on:
       db:
         condition: service_healthy
