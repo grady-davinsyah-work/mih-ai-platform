@@ -28,7 +28,9 @@ export function extractCitedIndices(answer: string): Set<number> {
   return set;
 }
 
-export async function search(question: string): Promise<{ labeled: SearchRow[]; context: string }> {
+const RAG_WEBHOOK_TIMEOUT_MS = 30_000;
+
+async function searchLocal(question: string): Promise<{ labeled: SearchRow[]; context: string }> {
   const [qv] = await embedTexts([question]);
   const { rows } = await pool.query(
     `SELECT c.id, c.content, c.page_or_slide, c.section_title,
@@ -48,6 +50,37 @@ export async function search(question: string): Promise<{ labeled: SearchRow[]; 
     )
     .join("\n\n---\n\n");
   return { labeled, context };
+}
+
+export async function searchViaWebhook(question: string): Promise<{ labeled: SearchRow[]; context: string }> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), RAG_WEBHOOK_TIMEOUT_MS);
+  try {
+    const resp = await fetch(config.ragWebhookUrl, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ question, vector_k: config.vectorK }),
+      signal: controller.signal,
+    });
+    if (!resp.ok) throw new Error(`n8n rag webhook HTTP ${resp.status}`);
+    const data = (await resp.json()) as { labeled?: SearchRow[]; context?: string };
+    if (!Array.isArray(data.labeled) || typeof data.context !== "string")
+      throw new Error("n8n rag webhook: format response tidak valid");
+    return { labeled: data.labeled, context: data.context };
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+export async function search(question: string): Promise<{ labeled: SearchRow[]; context: string }> {
+  if (config.ragWebhookUrl) {
+    try {
+      return await searchViaWebhook(question);
+    } catch (err) {
+      console.warn("n8n rag webhook gagal, fallback ke query lokal:", (err as Error).message);
+    }
+  }
+  return searchLocal(question);
 }
 
 export async function ask(question: string): Promise<{ answer: string; citations: Citation[] }> {
