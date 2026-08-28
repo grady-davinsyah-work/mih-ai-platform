@@ -1,4 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 import { api, type ChatEvent, type ChatMessage, type Conversation } from "../api";
 import {
   Button,
@@ -201,6 +203,34 @@ export default function Playground() {
 
 function MessageBubble({ message }: { message: ChatMessage }) {
   const isUser = message.role === "user";
+  const [downloading, setDownloading] = useState(false);
+
+  async function downloadPptx() {
+    if (!message.content || downloading) return;
+    setDownloading(true);
+    try {
+      const resp = await fetch("/api/skills/pptx", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ title: "Rangkuman Jawaban MIH", content: message.content }),
+      });
+      if (!resp.ok) throw new Error((await resp.json().catch(() => ({}))).error ?? "gagal membuat pptx");
+      const blob = await resp.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "rangkuman-jawaban-mih.pptx";
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    } catch (err: any) {
+      alert(err.message ?? "gagal membuat pptx");
+    } finally {
+      setDownloading(false);
+    }
+  }
+
   return (
     <div className={`chat-fade-in mx-auto flex max-w-3xl ${isUser ? "justify-end" : "justify-start"}`}>
       <div className={isUser ? "max-w-[80%]" : "w-full"}>
@@ -210,9 +240,12 @@ function MessageBubble({ message }: { message: ChatMessage }) {
           </div>
         ) : (
           <Card interactive={false} className="p-5">
-            <p className="whitespace-pre-wrap text-[15px] leading-relaxed text-slate-800">
-              {message.content || "…"}
-            </p>
+            <MarkdownContent content={message.content || "…"} />
+            <div className="mt-4 flex items-center justify-end">
+              <Button variant="secondary" className="px-3 py-1.5 text-xs" onClick={downloadPptx} disabled={downloading || !message.content}>
+                {downloading ? "Membuat…" : "Unduh PPTX"}
+              </Button>
+            </div>
             {message.citations.length > 0 && (
               <div className="mt-4 border-t border-slate-100 pt-3">
                 <p className="text-xs font-semibold text-slate-500">Rujukan</p>
@@ -252,6 +285,49 @@ function StreamingCursor() {
         <span className="h-2 w-2 animate-bounce rounded-full bg-slate-400 [animation-delay:120ms]" />
         <span className="h-2 w-2 animate-bounce rounded-full bg-slate-400 [animation-delay:240ms]" />
       </div>
+    </div>
+  );
+}
+
+function MarkdownContent({ content }: { content: string }) {
+  return (
+    <div className="prose-chat text-[15px] leading-relaxed text-slate-800">
+      <ReactMarkdown
+        remarkPlugins={[remarkGfm]}
+        components={{
+          h1: (p) => <h1 className="mt-3 mb-2 text-xl font-bold text-slate-900 first:mt-0" {...p} />,
+          h2: (p) => <h2 className="mt-3 mb-2 text-lg font-bold text-slate-900 first:mt-0" {...p} />,
+          h3: (p) => <h3 className="mt-3 mb-1.5 text-base font-semibold text-slate-900 first:mt-0" {...p} />,
+          p: (p) => <p className="mb-3 last:mb-0" {...p} />,
+          ul: (p) => <ul className="mb-3 list-disc pl-5 last:mb-0" {...p} />,
+          ol: (p) => <ol className="mb-3 list-decimal pl-5 last:mb-0" {...p} />,
+          li: (p) => <li className="mb-1" {...p} />,
+          strong: (p) => <strong className="font-bold text-slate-900" {...p} />,
+          em: (p) => <em className="italic" {...p} />,
+          blockquote: (p) => (
+            <blockquote className="mb-3 border-l-4 border-slate-200 pl-4 italic text-slate-500 last:mb-0" {...p} />
+          ),
+          a: (p) => <a className="text-blue-700 underline hover:text-blue-900" {...p} />,
+          code: (p: any) =>
+            p.inline ? (
+              <code className="rounded bg-slate-100 px-1.5 py-0.5 font-mono text-[13px] text-slate-800" {...p} />
+            ) : (
+              <code {...p} />
+            ),
+          pre: (p) => (
+            <pre className="mb-3 overflow-x-auto rounded-lg bg-slate-900 p-3 text-[13px] leading-relaxed text-slate-100 last:mb-0" {...p} />
+          ),
+          table: (p) => (
+            <div className="mb-3 overflow-x-auto last:mb-0">
+              <table className="w-full border-collapse text-sm" {...p} />
+            </div>
+          ),
+          th: (p) => <th className="border border-slate-200 bg-slate-50 px-3 py-1.5 text-left font-bold" {...p} />,
+          td: (p) => <td className="border border-slate-200 px-3 py-1.5" {...p} />,
+        }}
+      >
+        {content}
+      </ReactMarkdown>
     </div>
   );
 }
