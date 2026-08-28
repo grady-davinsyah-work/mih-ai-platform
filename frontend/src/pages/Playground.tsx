@@ -16,6 +16,7 @@ export default function Playground() {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [question, setQuestion] = useState("");
   const [streaming, setStreaming] = useState(false);
+  const [skillBusy, setSkillBusy] = useState(false);
   const [error, setError] = useState("");
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [draftId, setDraftId] = useState<number | null>(null);
@@ -99,10 +100,49 @@ export default function Playground() {
     }
   }
 
+  async function buildAndDownloadPptx(content: string) {
+    const resp = await fetch("/api/skills/pptx", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ title: "Rangkuman Jawaban MIH", content }),
+    });
+    if (!resp.ok) throw new Error((await resp.json().catch(() => ({}))).error ?? "gagal membuat pptx");
+    const blob = await resp.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "rangkuman-jawaban-mih.pptx";
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  }
+
   async function send(e?: React.FormEvent) {
     e?.preventDefault();
     const q = question.trim();
-    if (!q || streaming) return;
+    if (!q || streaming || skillBusy) return;
+
+    // Skill via perintah: /pptx ubah jawaban asisten terakhir menjadi presentasi
+    if (q.startsWith("/pptx")) {
+      const lastAssistant = [...messages].reverse().find((m) => m.role === "assistant");
+      if (!lastAssistant?.content) {
+        setError("Belum ada jawaban asisten untuk diubah jadi PPTX.");
+        return;
+      }
+      setQuestion("");
+      setSkillBusy(true);
+      setError("");
+      try {
+        await buildAndDownloadPptx(lastAssistant.content);
+      } catch (err: any) {
+        setError(err.message);
+      } finally {
+        setSkillBusy(false);
+      }
+      return;
+    }
+
     setError("");
     setQuestion("");
     setStreaming(true);
@@ -184,15 +224,15 @@ export default function Playground() {
           <div className="mx-auto flex max-w-3xl items-end gap-2">
             <Textarea
               rows={1}
-              placeholder="Tulis pertanyaan… (Enter untuk kirim, Shift+Enter baris baru)"
+              placeholder="Tulis pertanyaan… (/pptx = ubah jawaban terakhir jadi PPTX)"
               value={question}
               onChange={(e) => setQuestion(e.target.value)}
               onKeyDown={(e) => {
                 if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(); }
               }}
             />
-            <Button variant="primary" onClick={send} disabled={!question.trim() || streaming}>
-              {streaming ? "…" : "Kirim"}
+            <Button variant="primary" onClick={send} disabled={!question.trim() || streaming || skillBusy}>
+              {streaming ? "…" : skillBusy ? "PPTX…" : "Kirim"}
             </Button>
           </div>
         </form>
@@ -203,34 +243,6 @@ export default function Playground() {
 
 function MessageBubble({ message }: { message: ChatMessage }) {
   const isUser = message.role === "user";
-  const [downloading, setDownloading] = useState(false);
-
-  async function downloadPptx() {
-    if (!message.content || downloading) return;
-    setDownloading(true);
-    try {
-      const resp = await fetch("/api/skills/pptx", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ title: "Rangkuman Jawaban MIH", content: message.content }),
-      });
-      if (!resp.ok) throw new Error((await resp.json().catch(() => ({}))).error ?? "gagal membuat pptx");
-      const blob = await resp.blob();
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = "rangkuman-jawaban-mih.pptx";
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      URL.revokeObjectURL(url);
-    } catch (err: any) {
-      alert(err.message ?? "gagal membuat pptx");
-    } finally {
-      setDownloading(false);
-    }
-  }
-
   return (
     <div className={`chat-fade-in mx-auto flex max-w-3xl ${isUser ? "justify-end" : "justify-start"}`}>
       <div className={isUser ? "max-w-[80%]" : "w-full"}>
@@ -241,11 +253,6 @@ function MessageBubble({ message }: { message: ChatMessage }) {
         ) : (
           <Card interactive={false} className="p-5">
             <MarkdownContent content={message.content || "…"} />
-            <div className="mt-4 flex items-center justify-end">
-              <Button variant="secondary" className="px-3 py-1.5 text-xs" onClick={downloadPptx} disabled={downloading || !message.content}>
-                {downloading ? "Membuat…" : "Unduh PPTX"}
-              </Button>
-            </div>
             {message.citations.length > 0 && (
               <div className="mt-4 border-t border-slate-100 pt-3">
                 <p className="text-xs font-semibold text-slate-500">Rujukan</p>
