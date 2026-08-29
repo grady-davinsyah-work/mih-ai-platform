@@ -9,8 +9,24 @@ import {
   Input,
   PageHeader,
   Select,
-  Textarea,
 } from "../components/ui";
+import {
+  Button as FButton,
+  Checkbox as FCheckbox,
+  Dialog as FDialog,
+  DialogActions,
+  DialogBody,
+  DialogContent,
+  DialogSurface,
+  DialogTitle,
+  Dropdown as FDropdown,
+  Field as FField,
+  FluentProvider,
+  Input as FInput,
+  Option as FOption,
+  Textarea as FTextarea,
+  webLightTheme,
+} from "@fluentui/react-components";
 
 interface ContentForm {
   type: "news" | "publication";
@@ -246,65 +262,72 @@ export default function Admin() {
           </div>
 
           {showContentForm && (
-            <form onSubmit={saveContent} className="mt-4 grid gap-3 sm:grid-cols-2">
-              <Field label="Jenis">
-                <Select value={contentForm.type}
-                  onChange={(e) => setContentForm({ ...contentForm, type: e.target.value as "news" | "publication" })}>
-                  <option value="news">Berita</option>
-                  <option value="publication">Publikasi</option>
-                </Select>
-              </Field>
-              <Field label="Slug">
-                <Input placeholder="contoh: berita-triwulan-iii" value={contentForm.slug}
-                  onChange={(e) => setContentForm({ ...contentForm, slug: e.target.value })} required />
-              </Field>
-              <Field label="Judul">
-                <Input placeholder="Judul" value={contentForm.title}
-                  onChange={(e) => setContentForm({ ...contentForm, title: e.target.value })} required />
-              </Field>
-              <Field label="Kategori">
-                <Input placeholder="Berita, Pengumuman, ..." value={contentForm.category}
-                  onChange={(e) => setContentForm({ ...contentForm, category: e.target.value })} />
-              </Field>
-              <Field label="Ringkasan">
-                <Textarea rows={2} placeholder="Ringkasan singkat (excerpt carousel)" value={contentForm.excerpt}
-                  onChange={(e) => setContentForm({ ...contentForm, excerpt: e.target.value })} />
-              </Field>
-              <Field label="URL Gambar">
-                <Input placeholder="https://drive.google.com/..." value={contentForm.image}
-                  onChange={(e) => setContentForm({ ...contentForm, image: e.target.value })} />
-              </Field>
-              {contentForm.type === "publication" && (
-                <>
-                  <Field label="URL Dokumen">
-                    <Input placeholder="https://..." value={contentForm.document_url}
-                      onChange={(e) => setContentForm({ ...contentForm, document_url: e.target.value })} />
-                  </Field>
-                  <Field label="Nama Dokumen">
-                    <Input placeholder="Laporan Triwulan III 2026.pdf" value={contentForm.document_name}
-                      onChange={(e) => setContentForm({ ...contentForm, document_name: e.target.value })} />
-                  </Field>
-                </>
-              )}
-              <Field label="Isi">
-                <Textarea rows={4} placeholder="Satu blok per baris (paragraf / HTML)" value={contentForm.contentText}
-                  onChange={(e) => setContentForm({ ...contentForm, contentText: e.target.value })} />
-              </Field>
-              <Field label="Galeri">
-                <Textarea rows={4} placeholder="Satu URL gambar per baris" value={contentForm.galleryText}
-                  onChange={(e) => setContentForm({ ...contentForm, galleryText: e.target.value })} />
-              </Field>
-              <label className="flex items-end gap-2 pb-1 text-sm text-slate-700">
-                <input type="checkbox" className="accent-blue-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-900"
-                  checked={contentForm.is_published}
-                  onChange={(e) => setContentForm({ ...contentForm, is_published: e.target.checked })} />
-                Publish
-              </label>
-              <div className="flex items-end gap-2">
-                <Button variant="primary" type="submit" disabled={busy}>Simpan</Button>
-                <Button variant="secondary" type="button" onClick={() => setShowContentForm(false)} disabled={busy}>Batal</Button>
-              </div>
-            </form>
+            <FluentProvider theme={webLightTheme}>
+              <FDialog open onOpenChange={(_, d) => setShowContentForm(d.open)}>
+                <DialogSurface>
+                  <form onSubmit={saveContent}>
+                    <DialogBody>
+                      <DialogTitle>{editingId === null ? "Tambah Konten" : "Edit Konten"}</DialogTitle>
+                      <DialogContent className="grid gap-4 sm:grid-cols-2">
+                        <FField label="Jenis" required>
+                          <FDropdown value={contentForm.type}
+                            onOptionSelect={(_, d) => setContentForm({ ...contentForm, type: d.optionValue as "news" | "publication" })}>
+                            <FOption value="news">Berita</FOption>
+                            <FOption value="publication">Publikasi</FOption>
+                          </FDropdown>
+                        </FField>
+                        <FField label="Slug" required>
+                          <FInput placeholder="contoh: berita-triwulan-iii" value={contentForm.slug}
+                            onChange={(_, d) => setContentForm({ ...contentForm, slug: d.value })} />
+                        </FField>
+                        <FField label="Judul" required>
+                          <FInput placeholder="Judul" value={contentForm.title}
+                            onChange={(_, d) => setContentForm({ ...contentForm, title: d.value })} />
+                        </FField>
+                        <FField label="Kategori">
+                          <FInput placeholder="Berita, Pengumuman, ..." value={contentForm.category}
+                            onChange={(_, d) => setContentForm({ ...contentForm, category: d.value })} />
+                        </FField>
+                        <FField label="Ringkasan" className="sm:col-span-2">
+                          <FTextarea rows={2} placeholder="Ringkasan singkat (excerpt carousel)" value={contentForm.excerpt}
+                            onChange={(_, d) => setContentForm({ ...contentForm, excerpt: d.value })} />
+                        </FField>
+                        <FField label="URL Gambar" className="sm:col-span-2">
+                          <FInput placeholder="https://drive.google.com/..." value={contentForm.image}
+                            onChange={(_, d) => setContentForm({ ...contentForm, image: d.value })} />
+                        </FField>
+                        {contentForm.type === "publication" && (
+                          <>
+                            <FField label="URL Dokumen">
+                              <FInput placeholder="https://..." value={contentForm.document_url}
+                                onChange={(_, d) => setContentForm({ ...contentForm, document_url: d.value })} />
+                            </FField>
+                            <FField label="Nama Dokumen">
+                              <FInput placeholder="Laporan Triwulan III 2026.pdf" value={contentForm.document_name}
+                                onChange={(_, d) => setContentForm({ ...contentForm, document_name: d.value })} />
+                            </FField>
+                          </>
+                        )}
+                        <FField label="Isi" className="sm:col-span-2">
+                          <FTextarea rows={4} placeholder="Satu blok per baris (paragraf / HTML)" value={contentForm.contentText}
+                            onChange={(_, d) => setContentForm({ ...contentForm, contentText: d.value })} />
+                        </FField>
+                        <FField label="Galeri" className="sm:col-span-2">
+                          <FTextarea rows={4} placeholder="Satu URL gambar per baris" value={contentForm.galleryText}
+                            onChange={(_, d) => setContentForm({ ...contentForm, galleryText: d.value })} />
+                        </FField>
+                        <FCheckbox label="Publish" checked={contentForm.is_published}
+                          onChange={(_, d) => setContentForm({ ...contentForm, is_published: d.checked === true })} />
+                      </DialogContent>
+                      <DialogActions>
+                        <FButton appearance="primary" type="submit" disabled={busy}>Simpan</FButton>
+                        <FButton appearance="secondary" type="button" onClick={() => setShowContentForm(false)} disabled={busy}>Batal</FButton>
+                      </DialogActions>
+                    </DialogBody>
+                  </form>
+                </DialogSurface>
+              </FDialog>
+            </FluentProvider>
           )}
 
           <div className="mt-4 overflow-x-auto">
