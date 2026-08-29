@@ -36,6 +36,52 @@ router.post("/users", requireAdmin, async (req, res) => {
   }
 });
 
+router.put("/users/:id", requireAdmin, async (req, res) => {
+  const id = Number(req.params.id);
+  if (!Number.isInteger(id)) return res.status(400).json({ error: "id tidak valid" });
+  const body = req.body ?? {};
+  const existing = await pool.query("SELECT * FROM users WHERE id=$1", [id]);
+  if (existing.rows.length === 0) return res.status(404).json({ error: "user tidak ditemukan" });
+  const prev = existing.rows[0];
+
+  const name = body.name !== undefined && String(body.name).trim() ? String(body.name).trim() : prev.name;
+  const email = body.email !== undefined && String(body.email).trim()
+    ? String(body.email).trim().toLowerCase()
+    : prev.email;
+  const unit_kerja = body.unit_kerja !== undefined ? String(body.unit_kerja) : prev.unit_kerja;
+  // Akun sendiri tidak boleh dicabut hak adminnya (mencegah admin terkunci).
+  // session.userId dari pg bertipe string — bandingkan sebagai angka.
+  let is_admin = body.is_admin !== undefined ? body.is_admin === true || body.is_admin === "true" : prev.is_admin;
+  if (Number(req.session?.userId) === id) is_admin = true;
+
+  const password_hash = body.password ? hashPassword(String(body.password)) : prev.password_hash;
+  try {
+    const { rows } = await pool.query(
+      `UPDATE users SET name=$1, email=$2, unit_kerja=$3, password_hash=$4, is_admin=$5
+        WHERE id=$6 RETURNING id, name, email, unit_kerja, is_admin, created_at`,
+      [name, email, unit_kerja, password_hash, is_admin, id]
+    );
+    res.json(rows[0]);
+  } catch (e: any) {
+    if (e.code === "23505") return res.status(409).json({ error: "email sudah terdaftar" });
+    throw e;
+  }
+});
+
+router.delete("/users/:id", requireAdmin, async (req, res) => {
+  const id = Number(req.params.id);
+  if (!Number.isInteger(id)) return res.status(400).json({ error: "id tidak valid" });
+  if (Number(req.session?.userId) === id)
+    return res.status(400).json({ error: "tidak bisa menghapus akun sendiri" });
+  // api_tokens & conversations sudah ON DELETE CASCADE. usage_logs & content
+  // mereferensi users tanpa cascade — bersihkan dulu.
+  await pool.query("UPDATE content SET created_by=NULL WHERE created_by=$1", [id]);
+  await pool.query("DELETE FROM usage_logs WHERE user_id=$1", [id]);
+  const r = await pool.query("DELETE FROM users WHERE id=$1", [id]);
+  if (r.rowCount === 0) return res.status(404).json({ error: "user tidak ditemukan" });
+  res.json({ ok: true });
+});
+
 // ---- api tokens ----
 router.post("/users/:id/tokens", requireAdmin, async (req, res) => {
   const userId = Number(req.params.id);

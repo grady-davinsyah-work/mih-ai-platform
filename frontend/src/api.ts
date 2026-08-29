@@ -74,6 +74,9 @@ export const api = {
   users: () => req<User[]>("/api/admin/users"),
   createUser: (u: { name: string; email: string; unit_kerja: string; password: string; is_admin: boolean }) =>
     req<User>("/api/admin/users", { method: "POST", body: JSON.stringify(u) }),
+  updateUser: (id: number, u: { name: string; email: string; unit_kerja: string; password?: string; is_admin: boolean }) =>
+    req<User>(`/api/admin/users/${id}`, { method: "PUT", body: JSON.stringify(u) }),
+  deleteUser: (id: number) => req<{ ok: boolean }>(`/api/admin/users/${id}`, { method: "DELETE" }),
   tokens: () => req<Token[]>("/api/admin/tokens"),
   createToken: (userId: number, opts: { name?: string; scope?: string; daily_limit?: number }) =>
     req<{ token: string; note: string }>(`/api/admin/users/${userId}/tokens`, { method: "POST", body: JSON.stringify(opts) }),

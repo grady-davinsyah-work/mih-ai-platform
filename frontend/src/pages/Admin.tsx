@@ -54,6 +54,8 @@ export default function Admin() {
   const [logs, setLogs] = useState<any[]>([]);
   const [error, setError] = useState("");
   const [newUser, setNewUser] = useState({ name: "", email: "", unit_kerja: "", password: "", is_admin: false });
+  const [editingUserId, setEditingUserId] = useState<number | null>(null);
+  const [userForm, setUserForm] = useState({ name: "", email: "", unit_kerja: "", password: "", is_admin: false });
   const [tokenUser, setTokenUser] = useState(0);
   const [tokenName, setTokenName] = useState("");
   const [freshToken, setFreshToken] = useState<string | null>(null);
@@ -158,6 +160,43 @@ export default function Admin() {
     try {
       await api.createUser(newUser);
       setNewUser({ name: "", email: "", unit_kerja: "", password: "", is_admin: false });
+      load();
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  function openEditUser(u: User) {
+    setEditingUserId(u.id);
+    setUserForm({ name: u.name, email: u.email, unit_kerja: u.unit_kerja, password: "", is_admin: u.is_admin });
+  }
+
+  function cancelEditUser() {
+    setEditingUserId(null);
+  }
+
+  async function saveUser(e: FormEvent) {
+    e.preventDefault();
+    if (editingUserId === null) return;
+    setBusy(true);
+    try {
+      await api.updateUser(editingUserId, { ...userForm, password: userForm.password || undefined });
+      setEditingUserId(null);
+      load();
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function removeUser(u: User) {
+    if (!window.confirm(`Hapus user "${u.name}" (${u.email})?`)) return;
+    setBusy(true);
+    try {
+      await api.deleteUser(u.id);
       load();
     } catch (err: any) {
       setError(err.message);
@@ -313,9 +352,9 @@ export default function Admin() {
           </div>
         </Card>
 
-        {/* Buat user */}
+        {/* Manajemen user */}
         <Card interactive={false} className="p-5">
-          <h2 className="text-sm font-extrabold text-slate-600">Buat user</h2>
+          <h2 className="text-sm font-extrabold text-slate-600">Manajemen User</h2>
           <form onSubmit={createUser} className="mt-4 grid gap-3 sm:grid-cols-2">
             <Field label="Nama">
               <Input placeholder="Nama" value={newUser.name}
@@ -343,6 +382,85 @@ export default function Admin() {
               <Button variant="primary" type="submit" disabled={busy}>Simpan</Button>
             </div>
           </form>
+
+          <div className="mt-4 overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-slate-200 bg-slate-100 text-left">
+                  <th className="px-3 py-2 text-xs font-extrabold uppercase text-slate-600">Nama</th>
+                  <th className="px-3 py-2 text-xs font-extrabold uppercase text-slate-600">Email</th>
+                  <th className="px-3 py-2 text-xs font-extrabold uppercase text-slate-600">Unit kerja</th>
+                  <th className="px-3 py-2 text-xs font-extrabold uppercase text-slate-600">Peran</th>
+                  <th className="px-3 py-2 text-right text-xs font-extrabold uppercase text-slate-600">Aksi</th>
+                </tr>
+              </thead>
+              <tbody>
+                {users.map((u) =>
+                  editingUserId === u.id ? (
+                    <tr key={u.id}>
+                      <td colSpan={5} className="px-3 py-2">
+                        <form onSubmit={saveUser} className="grid items-end gap-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(0,10rem)_auto]">
+                          <Field label="Nama">
+                            <Input value={userForm.name}
+                              onChange={(e) => setUserForm({ ...userForm, name: e.target.value })} required />
+                          </Field>
+                          <Field label="Email">
+                            <Input type="email" value={userForm.email}
+                              onChange={(e) => setUserForm({ ...userForm, email: e.target.value })} required />
+                          </Field>
+                          <Field label="Unit kerja">
+                            <Input value={userForm.unit_kerja}
+                              onChange={(e) => setUserForm({ ...userForm, unit_kerja: e.target.value })} />
+                          </Field>
+                          <Field label="Password baru">
+                            <Input type="password" placeholder="Kosong = tetap" value={userForm.password}
+                              onChange={(e) => setUserForm({ ...userForm, password: e.target.value })} />
+                          </Field>
+                          <label className="flex items-end gap-2 pb-1 text-sm text-slate-700">
+                            <input type="checkbox" className="accent-blue-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-900"
+                              checked={userForm.is_admin}
+                              onChange={(e) => setUserForm({ ...userForm, is_admin: e.target.checked })} />
+                            Admin
+                          </label>
+                          <div className="flex items-end gap-2">
+                            <Button variant="primary" type="submit" disabled={busy}>Simpan</Button>
+                            <Button variant="secondary" type="button" onClick={cancelEditUser} disabled={busy}>Batal</Button>
+                          </div>
+                        </form>
+                      </td>
+                    </tr>
+                  ) : (
+                    <tr key={u.id} className="border-b border-slate-200 last:border-0">
+                      <td className="px-3 py-2 text-slate-700">{u.name}</td>
+                      <td className="px-3 py-2 text-slate-700">{u.email}</td>
+                      <td className="px-3 py-2 text-xs text-slate-600">{u.unit_kerja}</td>
+                      <td className="px-3 py-2">
+                        {u.is_admin
+                          ? <span className="text-xs font-semibold text-emerald-600">Admin</span>
+                          : <span className="text-xs font-semibold text-slate-500">Staf</span>}
+                      </td>
+                      <td className="whitespace-nowrap px-3 py-2 text-right">
+                        <button
+                          className="text-xs font-bold text-blue-900 underline underline-offset-2 hover:text-blue-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-900 disabled:cursor-not-allowed disabled:opacity-50"
+                          disabled={busy}
+                          onClick={() => openEditUser(u)}
+                        >
+                          Edit
+                        </button>
+                        <button
+                          className="ml-3 text-xs font-bold text-red-600 underline underline-offset-2 hover:text-red-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-600 disabled:cursor-not-allowed disabled:opacity-50"
+                          disabled={busy}
+                          onClick={() => removeUser(u)}
+                        >
+                          Hapus
+                        </button>
+                      </td>
+                    </tr>
+                  )
+                )}
+              </tbody>
+            </table>
+          </div>
         </Card>
 
         {/* Generate token */}

@@ -63,7 +63,7 @@ function Topbar() {
           <strong>ID</strong> Indonesia
         </span>
         <span className="ml-auto hidden text-xs text-slate-300 md:block">
-          Portal Dokumen Kedeputian Makro
+          Agen AI Kedeputian Makro
         </span>
       </div>
     </div>
@@ -82,7 +82,7 @@ function SiteHeader({ user, onLogout }: { user: User; onLogout: () => void }) {
               Kedeputian Bidang Perencanaan Makro
             </span>
             <span className="block text-xs font-semibold text-blue-900">
-              Portal Dokumen & Playground AI
+              Agen AI & Playground
             </span>
           </span>
         </Link>
@@ -234,7 +234,7 @@ export default function App() {
         <Route path="/dashboard/:slug" element={<DashboardRoute />} />
       </Route>
 
-      {/* Aplikasi internal (dari header landing via "Portal Dokumen") */}
+      {/* Aplikasi internal (dari header landing via "Agen AI") */}
       <Route element={<InternalLayout user={user} onLogout={handleLogout} />}>
         <Route path="/playground" element={<Playground />} />
         <Route path="/documents" element={<Documents />} />
