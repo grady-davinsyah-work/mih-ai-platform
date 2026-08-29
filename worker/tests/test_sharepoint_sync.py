@@ -21,7 +21,7 @@ class FakeConn:
         pass
 
 
-def test_sharepoint_sync_panggil_rclone(monkeypatch):
+def test_sharepoint_sync_panggil_rclone(monkeypatch, tmp_path):
     calls = []
 
     def fake_run(cmd, **kw):
@@ -30,12 +30,13 @@ def test_sharepoint_sync_panggil_rclone(monkeypatch):
 
     monkeypatch.setattr(ingest.subprocess, "run", fake_run)
     monkeypatch.setenv("SHAREPOINT_REMOTE", "sp:")
+    monkeypatch.setenv("SHAREPOINT_DEST", str(tmp_path))
     monkeypatch.delenv("RCLONE_CONFIG", raising=False)
     assert ingest.sharepoint_sync() is True
     cmd = calls[0]
     assert cmd[0] == "rclone" and cmd[1] == "sync"
     assert "sp:" in cmd
-    assert "/data/raw/sharepoint" in cmd
+    assert str(tmp_path) in cmd
     assert "--include" in cmd
 
 
@@ -44,12 +45,13 @@ def test_sharepoint_sync_lewati_jika_env_kosong(monkeypatch):
     assert ingest.sharepoint_sync() is False
 
 
-def test_sharepoint_sync_raise_saat_rclone_gagal(monkeypatch):
+def test_sharepoint_sync_raise_saat_rclone_gagal(monkeypatch, tmp_path):
     monkeypatch.setattr(
         ingest.subprocess, "run",
         lambda cmd, **kw: SimpleNamespace(returncode=1, stderr="auth failed"),
     )
     monkeypatch.setenv("SHAREPOINT_REMOTE", "sp:x")
+    monkeypatch.setenv("SHAREPOINT_DEST", str(tmp_path))
     import pytest
     with pytest.raises(RuntimeError):
         ingest.sharepoint_sync()

@@ -48,7 +48,7 @@ def test_scan_dir_mark_drive_source(tmp_path):
     assert inserts[0][1][-1] == "drive"
 
 
-def test_drive_sync_panggil_rclone(monkeypatch):
+def test_drive_sync_panggil_rclone(monkeypatch, tmp_path):
     calls = []
 
     def fake_run(cmd, **kw):
@@ -57,12 +57,13 @@ def test_drive_sync_panggil_rclone(monkeypatch):
 
     monkeypatch.setattr(ingest.subprocess, "run", fake_run)
     monkeypatch.setenv("DRIVE_REMOTE", "gdrive:folder-rag")
+    monkeypatch.setenv("DRIVE_DEST", str(tmp_path))
     monkeypatch.delenv("RCLONE_CONFIG", raising=False)
     assert ingest.drive_sync() is True
     cmd = calls[0]
     assert cmd[0] == "rclone" and cmd[1] == "sync"
     assert "gdrive:folder-rag" in cmd
-    assert "/data/raw/drive" in cmd
+    assert str(tmp_path) in cmd
     assert "--include" in cmd
     assert "*.pdf" in cmd and "*.pptx" in cmd and "*.docx" in cmd
     assert "--ignore-case" in cmd
@@ -73,12 +74,13 @@ def test_drive_sync_lewati_jika_env_kosong(monkeypatch):
     assert ingest.drive_sync() is False
 
 
-def test_drive_sync_raise_saat_rclone_gagal(monkeypatch):
+def test_drive_sync_raise_saat_rclone_gagal(monkeypatch, tmp_path):
     monkeypatch.setattr(
         ingest.subprocess, "run",
         lambda cmd, **kw: SimpleNamespace(returncode=1, stderr="permission denied"),
     )
     monkeypatch.setenv("DRIVE_REMOTE", "gdrive:x")
+    monkeypatch.setenv("DRIVE_DEST", str(tmp_path))
     import pytest
     with pytest.raises(RuntimeError):
         ingest.drive_sync()
