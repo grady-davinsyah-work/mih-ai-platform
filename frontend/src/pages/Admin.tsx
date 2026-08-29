@@ -159,6 +159,8 @@ export default function Admin() {
       await api.createUser(newUser);
       setNewUser({ name: "", email: "", unit_kerja: "", password: "", is_admin: false });
       load();
+    } catch (err: any) {
+      setError(err.message);
     } finally {
       setBusy(false);
     }
@@ -171,6 +173,8 @@ export default function Admin() {
       setFreshToken(r.token);
       setTokenName("");
       load();
+    } catch (err: any) {
+      setError(err.message);
     } finally {
       setBusy(false);
     }
@@ -181,6 +185,8 @@ export default function Admin() {
     try {
       await api.revokeToken(id);
       load();
+    } catch (err: any) {
+      setError(err.message);
     } finally {
       setBusy(false);
     }
