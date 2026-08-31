@@ -21,6 +21,12 @@ export interface SearchRow {
   label: number;
 }
 
+export interface SearchResult {
+  labeled: SearchRow[];
+  context: string;
+  isComparison: boolean;
+}
+
 export function extractCitedIndices(answer: string): Set<number> {
   const set = new Set<number>();
   const re = /\[(\d+)\]/g;
@@ -58,6 +64,44 @@ function capPerDocument(rows: any[], maxPerDoc: number): any[] {
   return out;
 }
 
+export function buildContext(labeled: SearchRow[], groupByDocument: boolean): string {
+  if (!groupByDocument) {
+    return labeled
+      .map((r) =>
+        `[${r.label}] (File: ${r.filename}, ${r.file_type}` +
+        (r.page_or_slide != null ? `, halaman/slide ${r.page_or_slide}` : "") +
+        (r.section_title ? `, Bagian: ${r.section_title}` : "") + `)\n${r.content}`
+      )
+      .join("\n\n---\n\n");
+  }
+  // Kelompokkan per dokumen agar LLM jelas mana chunk dari dokumen mana
+  // (kritis untuk pertanyaan perbandingan). Nomor [n] tetap berurutan.
+  const groups = new Map<number, { filename: string; file_type: string; rows: SearchRow[] }>();
+  for (const r of labeled) {
+    let g = groups.get(r.document_id);
+    if (!g) {
+      g = { filename: r.filename, file_type: r.file_type, rows: [] };
+      groups.set(r.document_id, g);
+    }
+    g.rows.push(r);
+  }
+  const parts: string[] = [];
+  let groupIdx = 0;
+  for (const g of groups.values()) {
+    groupIdx++;
+    parts.push(`=== Dokumen ${groupIdx}: ${g.filename} (${g.file_type}) ===`);
+    for (const r of g.rows) {
+      parts.push(
+        `[${r.label}]` +
+        (r.page_or_slide != null ? ` (halaman/slide ${r.page_or_slide})` : "") +
+        (r.section_title ? ` (Bagian: ${r.section_title})` : "") +
+        `\n${r.content}`
+      );
+    }
+  }
+  return parts.join("\n\n---\n\n");
+}
+
 const RAG_WEBHOOK_TIMEOUT_MS = 30_000;
 
 async function searchLocal(question: string): Promise<{ labeled: SearchRow[]; context: string }> {
@@ -74,7 +118,7 @@ async function searchLocal(question: string): Promise<{ labeled: SearchRow[]; co
       `${SELECT} ORDER BY c.embedding <=> $1::vector LIMIT $2`,
       [JSON.stringify(qv), config.vectorK + 6]
     );
-    rows = capPerDocument(wide, 3);
+    rows = capPerDocument(wide, 5);
     const seen = new Set<number>(rows.map((r) => r.id));
     for (const year of extractYears(question)) {
       const { rows: docs } = await pool.query(
@@ -102,17 +146,12 @@ async function searchLocal(question: string): Promise<{ labeled: SearchRow[]; co
     rows = top;
   }
   const labeled = rows.map((r, i) => ({ ...r, label: i + 1 }));
-  const context = labeled
-    .map((r) =>
-      `[${r.label}] (File: ${r.filename}, ${r.file_type}` +
-      (r.page_or_slide != null ? `, halaman/slide ${r.page_or_slide}` : "") +
-      (r.section_title ? `, Bagian: ${r.section_title}` : "") + `)\n${r.content}`
-    )
-    .join("\n\n---\n\n");
-  return { labeled, context };
+  const isComparison = isComparisonQuery(question);
+  const context = buildContext(labeled, isComparison);
+  return { labeled, context, isComparison };
 }
 
-export async function searchViaWebhook(question: string): Promise<{ labeled: SearchRow[]; context: string }> {
+export async function searchViaWebhook(question: string): Promise<SearchResult> {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), RAG_WEBHOOK_TIMEOUT_MS);
   try {
@@ -126,13 +165,13 @@ export async function searchViaWebhook(question: string): Promise<{ labeled: Sea
     const data = (await resp.json()) as { labeled?: SearchRow[]; context?: string };
     if (!Array.isArray(data.labeled) || typeof data.context !== "string")
       throw new Error("n8n rag webhook: format response tidak valid");
-    return { labeled: data.labeled, context: data.context };
+    return { labeled: data.labeled, context: data.context, isComparison: false };
   } finally {
     clearTimeout(timer);
   }
 }
 
-export async function search(question: string): Promise<{ labeled: SearchRow[]; context: string }> {
+export async function search(question: string): Promise<SearchResult> {
   if (config.ragWebhookUrl) {
     try {
       return await searchViaWebhook(question);
@@ -147,8 +186,8 @@ export async function ask(
   question: string,
   history: ChatTurn[] = []
 ): Promise<{ answer: string; citations: Citation[] }> {
-  const { labeled, context } = await search(question);
-  const answer = await generateAnswer(question, context, history);
+  const { labeled, context, isComparison } = await search(question);
+  const answer = await generateAnswer(question, context, history, isComparison);
   const cited = extractCitedIndices(answer);
   const citations: Citation[] = labeled
     .filter((r) => cited.has(r.label))
@@ -167,9 +206,9 @@ export async function* askStream(
   question: string,
   history: ChatTurn[] = []
 ): AsyncGenerator<{ delta: string } | { citations: Citation[] }> {
-  const { labeled, context } = await search(question);
+  const { labeled, context, isComparison } = await search(question);
   let text = "";
-  for await (const delta of streamAnswer(question, context, history)) {
+  for await (const delta of streamAnswer(question, context, history, isComparison)) {
     text += delta;
     yield { delta };
   }

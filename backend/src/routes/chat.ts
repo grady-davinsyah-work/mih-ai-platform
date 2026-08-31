@@ -4,6 +4,7 @@ import { config } from "../config";
 import { requireLogin } from "../middleware/sessionAuth";
 import { askAuth } from "../middleware/tokenAuth";
 import { askStream } from "../services/rag";
+import type { ChatTurn } from "../services/llm";
 
 const router = Router();
 
@@ -88,6 +89,13 @@ router.post("/chat", askAuth, async (req, res) => {
     .reverse()
     .map((r) => ({ role: r.role as "user" | "assistant", content: r.content }));
 
+  // Nomor sitasi [n] di pesan lama merujuk chunk konteks yang BERBEDA dari
+  // turn ini; ganti jadi (n) agar LLM tidak mengira itu rujukan konteks aktif.
+  const cleanHistory: ChatTurn[] = history.map((turn) => ({
+    ...turn,
+    content: turn.role === "assistant" ? turn.content.replace(/\[(\d+)\]/g, "($1)") : turn.content,
+  }));
+
   await pool.query(
     "INSERT INTO messages (conversation_id, role, content) VALUES ($1,'user',$2)",
     [conversationId, question]
@@ -112,7 +120,7 @@ router.post("/chat", askAuth, async (req, res) => {
   let answer = "";
   const started = Date.now();
   try {
-    for await (const part of askStream(question, history)) {
+    for await (const part of askStream(question, cleanHistory)) {
       if ("delta" in part) {
         answer += part.delta;
         write("delta", { text: part.delta });
