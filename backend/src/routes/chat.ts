@@ -76,6 +76,18 @@ router.post("/chat", askAuth, async (req, res) => {
       return res.status(404).json({ error: "percakapan tidak ditemukan" });
   }
 
+  // Konteks percakapan: N pesan terakhir jadi memori LLM (retrieval tetap
+  // berpusat pada pertanyaan saat ini).
+  const { rows: historyRows } = await pool.query(
+    `SELECT role, content FROM messages
+      WHERE conversation_id = $1 AND role IN ('user','assistant')
+      ORDER BY id DESC LIMIT $2`,
+    [conversationId, config.chatHistoryTurns]
+  );
+  const history = historyRows
+    .reverse()
+    .map((r) => ({ role: r.role as "user" | "assistant", content: r.content }));
+
   await pool.query(
     "INSERT INTO messages (conversation_id, role, content) VALUES ($1,'user',$2)",
     [conversationId, question]
@@ -100,7 +112,7 @@ router.post("/chat", askAuth, async (req, res) => {
   let answer = "";
   const started = Date.now();
   try {
-    for await (const part of askStream(question)) {
+    for await (const part of askStream(question, history)) {
       if ("delta" in part) {
         answer += part.delta;
         write("delta", { text: part.delta });

@@ -1,6 +1,11 @@
 import OpenAI from "openai";
 import { config } from "../config";
 
+export interface ChatTurn {
+  role: "user" | "assistant";
+  content: string;
+}
+
 const SYSTEM_PROMPT = [
   "Anda adalah asisten AI internal Kedeputian Perencanaan Makro Pembangunan.",
   "Jawab dalam Bahasa Indonesia, gunakan HANYA konteks yang diberikan.",
@@ -8,7 +13,11 @@ const SYSTEM_PROMPT = [
   "Wajib merujuk sumber dengan format [n] sesuai daftar konteks, contoh: 'Menurut [1] ...'.",
 ].join("\n");
 
-export async function generateAnswer(question: string, context: string): Promise<string> {
+export async function generateAnswer(
+  question: string,
+  context: string,
+  history: ChatTurn[] = []
+): Promise<string> {
   if (config.llmProvider === "mock") {
     return `Jawaban (mock) berdasarkan [1]: ${question}`;
   }
@@ -17,13 +26,18 @@ export async function generateAnswer(question: string, context: string): Promise
     model: config.openaiModel,
     messages: [
       { role: "system", content: SYSTEM_PROMPT },
+      ...history,
       { role: "user", content: `Pertanyaan: ${question}\n\nKonteks:\n${context}` },
     ],
   });
   return resp.choices[0]?.message?.content ?? "";
 }
 
-export async function* streamAnswer(question: string, context: string): AsyncGenerator<string> {
+export async function* streamAnswer(
+  question: string,
+  context: string,
+  history: ChatTurn[] = []
+): AsyncGenerator<string> {
   if (config.llmProvider === "mock") {
     yield `Jawaban (mock) berdasarkan [1]: ${question}`;
     return;
@@ -33,6 +47,7 @@ export async function* streamAnswer(question: string, context: string): AsyncGen
     model: config.openaiModel,
     messages: [
       { role: "system", content: SYSTEM_PROMPT },
+      ...history,
       { role: "user", content: `Pertanyaan: ${question}\n\nKonteks:\n${context}` },
     ],
     stream: true,

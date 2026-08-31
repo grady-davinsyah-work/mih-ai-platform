@@ -13,6 +13,7 @@ export const config = {
   port: Number(process.env.PORT ?? 3000),
   dataDir: process.env.DATA_DIR ?? "/data",
   vectorK: Number(process.env.VECTOR_K ?? 8),
+  chatHistoryTurns: Number(process.env.CHAT_HISTORY_TURNS ?? 8),
   ragWebhookUrl: process.env.N8N_RAG_WEBHOOK_URL ?? "",
   llmProvider: process.env.LLM_PROVIDER ?? "openai", // "openai" | "mock"
 };
