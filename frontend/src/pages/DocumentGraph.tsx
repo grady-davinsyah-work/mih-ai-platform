@@ -81,10 +81,65 @@ export default function DocumentGraph() {
   useEffect(() => {
     const g = fgRef.current;
     if (!g) return;
-    g.d3Force("charge")?.strength(-70);
-    g.d3Force("link")?.distance(45);
-    g.d3Force("link")?.strength(0.25);
-  }, []);
+    if (level == null) {
+      // Level 1 (klaster): bubble renggang supaya edge antar-klaster terlihat.
+      // Charge sebanding jari-jari (bubble besar tolak lebih kuat) + link panjang
+      // dengan tarikan lemah + collide agar bubble tak saling tumpuk.
+      const radius = (n: any) => 16 + Math.min(n.doc_count ?? 1, 45) / 1.5;
+      g.d3Force("charge")?.strength((n: any) => -6 * radius(n));
+      g.d3Force("link")?.distance((l: any) => 100 + Math.min((l.semantic ?? 0) / 4, 40));
+      g.d3Force("link")?.strength(0.05);
+      g.d3Force(
+        "bounds",
+        (alpha: number) => {
+          // Jaga bubble tetap dalam kotak graf. Tanpa edge (data kosong) charge
+          // bisa mendorong klaster jauh ke luar viewport.
+          const m = 40;
+          const w = graphSize.width;
+          const h = graphSize.height;
+          const k = 0.15 * alpha;
+          for (const n of g.graphData().nodes) {
+            const x = n.x ?? 0;
+            const y = n.y ?? 0;
+            const r = radius(n) + 12;
+            if (x < m + r) n.vx = (n.vx ?? 0) + (m + r - x) * k;
+            if (x > w - m - r) n.vx = (n.vx ?? 0) - (x - (w - m - r)) * k;
+            if (y < m + r) n.vy = (n.vy ?? 0) + (m + r - y) * k;
+            if (y > h - m - r) n.vy = (n.vy ?? 0) - (y - (h - m - r)) * k;
+          }
+        }
+      );
+      g.d3Force(
+        "collide",
+        (alpha: number) => {
+          const nodes = g.graphData().nodes;
+          for (let i = 0; i < nodes.length; i++) {
+            for (let j = i + 1; j < nodes.length; j++) {
+              const a = nodes[i], b = nodes[j];
+              let dx = (b.x ?? 0) - (a.x ?? 0), dy = (b.y ?? 0) - (a.y ?? 0);
+              const l2 = dx * dx + dy * dy;
+              const minD = radius(a) + radius(b) + 14;
+              if (l2 > 0 && l2 < minD * minD) {
+                const l = Math.sqrt(l2);
+                const push = ((minD - l) / l) * alpha;
+                a.vx = (a.vx ?? 0) - dx * push;
+                a.vy = (a.vy ?? 0) - dy * push;
+                b.vx = (b.vx ?? 0) + dx * push;
+                b.vy = (b.vy ?? 0) + dy * push;
+              }
+            }
+          }
+        }
+      );
+    } else {
+      // Level 2 (dokumen): spacing standar, tanpa collide.
+      g.d3Force("charge")?.strength(-70);
+      g.d3Force("link")?.distance(45);
+      g.d3Force("link")?.strength(0.25);
+      g.d3Force("collide", null);
+      g.d3Force("bounds", null);
+    }
+  }, [level, graphSize]);
 
   useEffect(() => {
     api
@@ -164,17 +219,16 @@ export default function DocumentGraph() {
 
   const hasGraph = !loading && nodes.length > 0;
 
-  // Fit-to-view saat data pertama tiba dan saat pindah level (bukan saat filter berubah).
-  const [fitted, setFitted] = useState(false);
+  // Fit-to-view setelah layout menetap (onEngineStop), bukan timer tetap — saat
+  // data pertama tiba node masih mengumpul di tengah, fit di 120ms terlalu cepat
+  // lalu charge menyebarkan node keluar dari hasil zoom.
+  const pendingFit = useRef(false);
   useEffect(() => {
-    if (!loading && hasGraph && !fitted) {
-      setFitted(true);
-      setTimeout(() => fgRef.current?.zoomToFit(500, 0.8), 120);
-    }
-  }, [loading, hasGraph, fitted]);
+    if (hasGraph) pendingFit.current = true;
+  }, [hasGraph]);
   useEffect(() => {
-    if (fitted && !loading) setTimeout(() => fgRef.current?.zoomToFit(400, 0.7), 60);
-  }, [level, fitted, loading]);
+    if (hasGraph) pendingFit.current = true;
+  }, [level, hasGraph]);
 
   return (
     <>
@@ -281,6 +335,12 @@ export default function DocumentGraph() {
                 linkCurvature={0.2}
                 linkDirectionalParticles={(l: any) => ((l.citations ?? 0) > 0 ? 2 : 0)}
                 d3VelocityDecay={0.35}
+                onEngineStop={() => {
+                  if (pendingFit.current) {
+                    pendingFit.current = false;
+                    fgRef.current?.zoomToFit(500, 40);
+                  }
+                }}
                 onNodeClick={(n: any) => {
                   if (level == null) {
                     setSelected(null);
