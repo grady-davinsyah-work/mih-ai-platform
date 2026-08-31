@@ -50,6 +50,16 @@ export function isComparisonQuery(question: string): boolean {
   return COMPARISON_RE.test(question) || extractYears(question).size >= 2;
 }
 
+// Augmentasi query retrieval dengan pertanyaan user terakhir dari history.
+// Follow-up yang referensial ("jelaskan poin kedua") kehilangan konteks dokumen
+// bila hanya di-embed sendirian; menggabungkannya dengan pertanyaan sebelumnya
+// membuat retrieval tetap mengarah ke dokumen yang sama dengan turn awal.
+export function buildRetrievalQuery(question: string, history: ChatTurn[]): string {
+  const lastUser = [...history].reverse().find((t) => t.role === "user");
+  if (!lastUser) return question;
+  return `${question} ${lastUser.content}`;
+}
+
 function capPerDocument(rows: any[], maxPerDoc: number): any[] {
   const perDoc = new Map<number, number>();
   const out: any[] = [];
@@ -171,22 +181,23 @@ export async function searchViaWebhook(question: string): Promise<SearchResult> 
   }
 }
 
-export async function search(question: string): Promise<SearchResult> {
+export async function search(question: string, history: ChatTurn[] = []): Promise<SearchResult> {
+  const query = buildRetrievalQuery(question, history);
   if (config.ragWebhookUrl) {
     try {
-      return await searchViaWebhook(question);
+      return await searchViaWebhook(query);
     } catch (err) {
       console.warn("n8n rag webhook gagal, fallback ke query lokal:", (err as Error).message);
     }
   }
-  return searchLocal(question);
+  return searchLocal(query);
 }
 
 export async function ask(
   question: string,
   history: ChatTurn[] = []
 ): Promise<{ answer: string; citations: Citation[] }> {
-  const { labeled, context, isComparison } = await search(question);
+  const { labeled, context, isComparison } = await search(question, history);
   const answer = await generateAnswer(question, context, history, isComparison);
   const cited = extractCitedIndices(answer);
   const citations: Citation[] = labeled
@@ -206,7 +217,7 @@ export async function* askStream(
   question: string,
   history: ChatTurn[] = []
 ): AsyncGenerator<{ delta: string } | { citations: Citation[] }> {
-  const { labeled, context, isComparison } = await search(question);
+  const { labeled, context, isComparison } = await search(question, history);
   let text = "";
   for await (const delta of streamAnswer(question, context, history, isComparison)) {
     text += delta;

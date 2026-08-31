@@ -1,5 +1,5 @@
 import { test, expect } from "bun:test";
-import { extractCitedIndices, extractYears, isComparisonQuery, buildContext } from "../src/services/rag";
+import { extractCitedIndices, extractYears, isComparisonQuery, buildContext, buildRetrievalQuery } from "../src/services/rag";
 import { selectSystemPrompt, SYSTEM_PROMPT, COMPARISON_SYSTEM_PROMPT } from "../src/services/llm";
 
 test("extracts [n] citation markers", () => {
@@ -51,4 +51,14 @@ test("buildContext tetap flat bila tidak diminta", () => {
   const flat = buildContext(labeled, false);
   expect(flat).toContain("[1] (File: RKP 2026.pdf, pdf");
   expect(flat).not.toContain("=== Dokumen");
+});
+
+test("buildRetrievalQuery menggabungkan pertanyaan user terakhir ke follow-up", () => {
+  expect(buildRetrievalQuery("jelaskan poin kedua", [])).toBe("jelaskan poin kedua");
+  const history = [
+    { role: "user" as const, content: "Perbandingan hilirisasi kelapa sawit dan kerangka ekonomi makro" },
+    { role: "assistant" as const, content: "Jawaban (mock) berdasarkan [1]" },
+  ];
+  expect(buildRetrievalQuery("jelaskan poin kedua", history)).toContain("Perbandingan hilirisasi kelapa sawit");
+  expect(buildRetrievalQuery("jelaskan poin kedua", history)).toContain("jelaskan poin kedua");
 });
