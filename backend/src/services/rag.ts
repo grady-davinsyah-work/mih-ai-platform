@@ -4,6 +4,7 @@ import { generateAnswer, streamAnswer } from "./llm";
 import { embedTexts } from "./embeddings";
 
 export interface Citation {
+  label: number;
   document_id: number;
   filename: string;
   file_type: string;
@@ -90,6 +91,7 @@ export async function ask(question: string): Promise<{ answer: string; citations
   const citations: Citation[] = labeled
     .filter((r) => cited.has(r.label))
     .map((r) => ({
+      label: r.label,
       document_id: r.document_id,
       filename: r.filename,
       file_type: r.file_type,
@@ -110,6 +112,7 @@ export async function* askStream(question: string): AsyncGenerator<{ delta: stri
   const citations: Citation[] = labeled
     .filter((r) => cited.has(r.label))
     .map((r) => ({
+      label: r.label,
       document_id: r.document_id,
       filename: r.filename,
       file_type: r.file_type,

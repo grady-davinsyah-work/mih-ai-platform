@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import { api, type ChatEvent, type ChatMessage, type Conversation } from "../api";
+import { api, type ChatEvent, type ChatMessage, type Citation, type Conversation } from "../api";
 import {
   Button,
   Card,
@@ -252,14 +252,14 @@ function MessageBubble({ message }: { message: ChatMessage }) {
           </div>
         ) : (
           <Card interactive={false} className="p-5">
-            <MarkdownContent content={message.content || "…"} />
+            <MarkdownContent content={message.content || "…"} citations={message.citations} />
             {message.citations.length > 0 && (
               <div className="mt-4 border-t border-slate-100 pt-3">
                 <p className="text-xs font-semibold text-slate-500">Rujukan</p>
                 <div className="mt-2 space-y-2">
                   {message.citations.map((c, i) => (
                     <p key={i} className="flex items-baseline gap-2 text-sm leading-relaxed text-slate-500">
-                      <CitationPin index={i + 1} />
+                      <CitationPin index={c.label ?? i + 1} />
                       <span>
                         <a
                           href={`/api/documents/${c.document_id}/file`}
@@ -296,7 +296,18 @@ function StreamingCursor() {
   );
 }
 
-function MarkdownContent({ content }: { content: string }) {
+// Ubah penanda [n] di jawaban menjadi tautan ke dokumen sumber (label = nomor di daftar rujukan).
+function linkifyCitations(content: string, citations: Citation[]): string {
+  if (citations.length === 0) return content;
+  const byLabel = new Map<number, Citation>();
+  for (const c of citations) if (c.label != null) byLabel.set(c.label, c);
+  return content.replace(/\[(\d+)\](?!\()/g, (m, n) => {
+    const c = byLabel.get(Number(n));
+    return c ? `[${n}](/api/documents/${c.document_id}/file)` : m;
+  });
+}
+
+function MarkdownContent({ content, citations = [] }: { content: string; citations?: Citation[] }) {
   return (
     <div className="prose-chat text-[15px] leading-relaxed text-slate-800">
       <ReactMarkdown
@@ -333,7 +344,7 @@ function MarkdownContent({ content }: { content: string }) {
           td: (p) => <td className="border border-slate-200 px-3 py-1.5" {...p} />,
         }}
       >
-        {content}
+        {linkifyCitations(content, citations)}
       </ReactMarkdown>
     </div>
   );

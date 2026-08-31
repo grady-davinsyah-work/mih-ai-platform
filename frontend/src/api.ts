@@ -12,7 +12,7 @@ export interface DocumentRow {
   created_at: string; updated_at: string;
 }
 export interface Citation {
-  document_id: number; filename: string; file_type: string;
+  label: number; document_id: number; filename: string; file_type: string;
   page_or_slide: number | null; section_title: string | null;
 }
 export interface AskResult { answer: string; citations: Citation[]; }
