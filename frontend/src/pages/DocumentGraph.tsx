@@ -60,6 +60,23 @@ export default function DocumentGraph() {
   const [level, setLevel] = useState<number | null>(null); // null = peta klaster
   const [selected, setSelected] = useState<number | null>(null);
   const fgRef = useRef<any>(null);
+  // ForceGraph2D default lebar/tinggi = window.innerWidth/innerHeight, bukan ukuran
+  // kontainer → canvas membesar (mis. 1400×900) melebihi kotak visible sehingga node
+  // terpotong dan tak bisa diklik. Ukur kotak graf dan teruskan sebagai prop.
+  const graphBoxRef = useRef<HTMLDivElement>(null);
+  const [graphSize, setGraphSize] = useState({ width: 800, height: 560 });
+  useEffect(() => {
+    const el = graphBoxRef.current;
+    if (!el) return;
+    const measure = () => {
+      const r = el.getBoundingClientRect();
+      if (r.width > 0) setGraphSize({ width: Math.round(r.width), height: Math.round(r.height) });
+    };
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
 
   useEffect(() => {
     const g = fgRef.current;
@@ -168,6 +185,7 @@ export default function DocumentGraph() {
       <div className="grid gap-6 lg:grid-cols-[1fr_340px]">
         <Card interactive={false}>
           <div
+            ref={graphBoxRef}
             className="relative h-[560px] overflow-hidden"
             style={{
               backgroundImage: "radial-gradient(circle, #e2e8f0 1px, transparent 1px)",
@@ -185,6 +203,8 @@ export default function DocumentGraph() {
             ) : (
               <ForceGraph2D
                 ref={fgRef}
+                width={graphSize.width}
+                height={graphSize.height}
                 graphData={level == null ? clusterGraph : docGraph}
                 backgroundColor="rgba(255,255,255,0)"
                 nodeLabel={(n: any) =>
@@ -244,12 +264,12 @@ export default function DocumentGraph() {
                     ctx.fillText(label, x, y + r + 2);
                   }
                 }}
-                nodePointerAreaPaint={(n: any, _color, ctx) => {
+                nodePointerAreaPaint={(n: any, color, ctx) => {
                   const x = n.x ?? 0;
                   const y = n.y ?? 0;
                   ctx.beginPath();
                   ctx.arc(x, y, level == null ? 22 : 12, 0, 2 * Math.PI);
-                  ctx.fillStyle = "#fff";
+                  ctx.fillStyle = color;
                   ctx.fill();
                 }}
                 linkColor={(l: any) => edgeColor(l as GraphEdge)}
