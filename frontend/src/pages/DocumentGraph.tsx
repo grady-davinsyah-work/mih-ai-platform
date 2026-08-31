@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import ForceGraph2D from "react-force-graph-2d";
 import { api, type GraphEdge, type GraphNode } from "../api";
 import { Badge, Button, Card, ErrorBanner, PageHeader, Select } from "../components/ui";
@@ -11,7 +11,6 @@ const TYPE_COLOR: Record<string, string> = {
 const DEFAULT_NODE_COLOR = "#475569";
 const C_SEM = "#2563eb"; // biru: edge semantik saja
 const C_CIT = "#d97706"; // amber: edge kutipan saja
-const C_BOTH = "#059669"; // emerald: keduanya
 
 function nodeColor(t: string): string {
   return TYPE_COLOR[t] ?? DEFAULT_NODE_COLOR;
@@ -19,12 +18,17 @@ function nodeColor(t: string): string {
 function edgeColor(e: GraphEdge): string {
   const hasSem = e.semantic !== null;
   const hasCit = (e.citations ?? 0) > 0;
-  if (hasSem && hasCit) return C_BOTH;
-  if (hasSem) return C_SEM;
-  return C_CIT;
+  if (hasSem && hasCit) return "rgba(5,150,105,0.75)";
+  if (hasSem) {
+    // Opasitas mengikuti skor — edge lemah nyaris tak terlihat, yang kuat menonjol.
+    const s = e.semantic ?? 0;
+    const a = Math.max(0.12, Math.min(0.85, (s - 0.45) * 2.2));
+    return `rgba(37,99,235,${a.toFixed(2)})`;
+  }
+  return "rgba(217,119,6,0.65)";
 }
 function edgeWidth(e: GraphEdge): number {
-  return 0.5 + Math.max((e.semantic ?? 0) * 3, Math.min(e.citations ?? 0, 5) * 0.6);
+  return 0.5 + Math.max((e.semantic ?? 0) * 1.6, Math.min(e.citations ?? 0, 5) * 0.5);
 }
 function truncate(s: string, n: number): string {
   return s.length > n ? s.slice(0, n - 1) + "…" : s;
@@ -35,10 +39,22 @@ export default function DocumentGraph() {
   const [edges, setEdges] = useState<GraphEdge[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [minSem, setMinSem] = useState("0.5");
+  const [minSem, setMinSem] = useState("0.6");
   const [showSem, setShowSem] = useState(true);
   const [showCit, setShowCit] = useState(true);
   const [selected, setSelected] = useState<number | null>(null);
+  const fgRef = useRef<any>(null);
+
+  // Fisika layout — react-force-graph mengekspos charge/link force hanya lewat
+  // metode kapsule (d3Force), bukan React props. Repulsi lebih kuat + pegas
+  // longgar agar node menyebar dan edge tidak menumpuk.
+  useEffect(() => {
+    const g = fgRef.current;
+    if (!g) return;
+    g.d3Force("charge")?.strength(-70);
+    g.d3Force("link")?.distance(45);
+    g.d3Force("link")?.strength(0.25);
+  }, []);
 
   useEffect(() => {
     api
@@ -140,6 +156,7 @@ export default function DocumentGraph() {
               </div>
             ) : (
               <ForceGraph2D
+                ref={fgRef}
                 graphData={graphData}
                 backgroundColor="rgba(255,255,255,0)"
                 nodeColor={(n: any) =>
@@ -161,7 +178,7 @@ export default function DocumentGraph() {
                   ctx.lineWidth = 1;
                   ctx.strokeStyle = "#ffffff";
                   ctx.stroke();
-                  if (globalScale >= 1) {
+                  if (globalScale >= 0.7) {
                     ctx.font = "10px system-ui, sans-serif";
                     ctx.fillStyle = "#0f172a";
                     ctx.textAlign = "center";
@@ -172,6 +189,7 @@ export default function DocumentGraph() {
                 linkColor={(l: any) => edgeColor(l as GraphEdge)}
                 linkWidth={(l: any) => edgeWidth(l as GraphEdge)}
                 linkDirectionalParticles={(l: any) => ((l.citations ?? 0) > 0 ? 2 : 0)}
+                d3VelocityDecay={0.35}
                 onNodeClick={(n: any) => setSelected(Number(n.id))}
                 onBackgroundClick={() => setSelected(null)}
               />
