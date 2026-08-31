@@ -130,6 +130,7 @@ router.get("/documents/graph", requireLogin, async (req, res) => {
     id: c.id,
     name: c.name,
     doc_count: (nodes as any[]).filter((n) => n.cluster === c.id).length,
+    keywords: c.keywords.slice(0, 6),
   }));
 
   res.json({ clusters, nodes, edges, cluster_edges: clusterEdges });

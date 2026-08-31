@@ -59,6 +59,9 @@ export default function DocumentGraph() {
   const [showCit, setShowCit] = useState(true);
   const [level, setLevel] = useState<number | null>(null); // null = peta klaster
   const [selected, setSelected] = useState<number | null>(null);
+  const [hovered, setHovered] = useState<number | null>(null);
+  const [flashId, setFlashId] = useState<number | null>(null); // ring highlight hasil pencarian
+  const [search, setSearch] = useState("");
   const fgRef = useRef<any>(null);
   // ForceGraph2D default lebar/tinggi = window.innerWidth/innerHeight, bukan ukuran
   // kontainer → canvas membesar (mis. 1400×900) melebihi kotak visible sehingga node
@@ -191,6 +194,75 @@ export default function DocumentGraph() {
     [docNodes, edges, showSem, showCit, minSemNum]
   );
 
+  // Fokus untuk highlight lingkungan: node hover (atau dokumen terpilih di Level 2).
+  const focusId = hovered ?? selected;
+  const neighborIds = useMemo(() => {
+    if (focusId == null) return null;
+    const links = level == null ? clusterGraph.links : docGraph.links;
+    const s = new Set<number>([focusId]);
+    for (const l of links as any[]) {
+      const a = Number(l.source);
+      const b = Number(l.target);
+      if (a === focusId) s.add(b);
+      if (b === focusId) s.add(a);
+    }
+    return s;
+  }, [focusId, level, clusterGraph.links, docGraph.links]);
+
+  // Level 2: ukuran node ∝ jumlah relasi (derajat) — dokumen paling terhubung terlihat.
+  const degree = useMemo(() => {
+    const m = new Map<number, number>();
+    for (const l of docGraph.links as any[]) {
+      m.set(Number(l.source), (m.get(Number(l.source)) ?? 0) + 1);
+      m.set(Number(l.target), (m.get(Number(l.target)) ?? 0) + 1);
+    }
+    return m;
+  }, [docGraph.links]);
+
+  // Pencarian dokumen dalam klaster aktif.
+  const searchMatches = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    if (level == null || q.length < 2) return [];
+    return docNodes.filter((n) => n.filename.toLowerCase().includes(q)).slice(0, 6);
+  }, [search, level, docNodes]);
+
+  // Relasi terkuat untuk panel insight (Level 1 antar-klaster, Level 2 antar-dokumen).
+  const topRelations = useMemo(() => {
+    const links = level == null ? clusterGraph.links : docGraph.links;
+    const nameOf = (id: number) => {
+      if (level == null) return clusters.find((c) => c.id === id)?.name ?? `#${id}`;
+      return nodes.find((n) => Number(n.id) === id)?.filename ?? `#${id}`;
+    };
+    return (links as GraphEdge[])
+      .map((l) => ({
+        a: nameOf(Number((l as any).source)),
+        b: nameOf(Number((l as any).target)),
+        sem: l.semantic,
+        cit: l.citations,
+        score: Math.max(l.semantic ?? 0, l.citations ?? 0),
+      }))
+      .sort((x, y) => y.score - x.score)
+      .slice(0, 5);
+  }, [level, clusterGraph.links, docGraph.links, clusters, nodes]);
+
+  const hoveredCluster =
+    level == null && hovered != null ? clusters.find((c) => c.id === hovered) ?? null : null;
+
+  // Ring highlight pencarian hilang setelah beberapa detik.
+  useEffect(() => {
+    if (flashId == null) return;
+    const t = setTimeout(() => setFlashId(null), 3000);
+    return () => clearTimeout(t);
+  }, [flashId]);
+
+  const centerOnNode = (id: number) => {
+    setSearch("");
+    setSelected(id);
+    setFlashId(id);
+    const n = fgRef.current?.graphData().nodes.find((x: any) => Number(x.id) === id);
+    if (n && n.x != null) fgRef.current?.centerAt(n.x, n.y, 900);
+  };
+
   const activeCluster = clusters.find((c) => c.id === level) ?? null;
   const selectedNode = useMemo(
     () => nodes.find((n) => Number(n.id) === selected) ?? null,
@@ -269,9 +341,13 @@ export default function DocumentGraph() {
                 nodeCanvasObject={(n: any, ctx, globalScale) => {
                   const x = n.x ?? 0;
                   const y = n.y ?? 0;
+                  const id = Number(n.id);
+                  // Redupkan yang bukan node fokus / tetangganya → struktur terbaca.
+                  const dim = focusId != null && id !== focusId && !(neighborIds?.has(id));
                   if (level == null) {
                     // Bubble klaster.
                     const r = 16 + Math.min(n.doc_count ?? 1, 45) / 1.5;
+                    if (dim) ctx.globalAlpha = 0.2;
                     ctx.beginPath();
                     ctx.arc(x, y, r, 0, 2 * Math.PI);
                     ctx.fillStyle = CLUSTER_COLOR[n.id] ?? DEFAULT_NODE_COLOR;
@@ -279,31 +355,49 @@ export default function DocumentGraph() {
                     ctx.lineWidth = 2;
                     ctx.strokeStyle = "#ffffff";
                     ctx.stroke();
+                    ctx.globalAlpha = 1;
+                    if (flashId === id) {
+                      ctx.beginPath();
+                      ctx.arc(x, y, r + 6, 0, 2 * Math.PI);
+                      ctx.lineWidth = 3;
+                      ctx.strokeStyle = "#0f172a";
+                      ctx.stroke();
+                    }
                     ctx.textAlign = "center";
                     ctx.textBaseline = "middle";
+                    ctx.globalAlpha = dim ? 0.35 : 1;
                     ctx.font = "700 12px system-ui, sans-serif";
                     ctx.fillStyle = "#ffffff";
                     ctx.fillText(truncate(String(n.name), 26), x, y - 4);
                     ctx.font = "600 10px system-ui, sans-serif";
                     ctx.fillStyle = "rgba(255,255,255,0.9)";
                     ctx.fillText(`${n.doc_count} dokumen`, x, y + 12);
+                    ctx.globalAlpha = 1;
                     return;
                   }
-                  // Dokumen: disc warna + label (mode sekarang).
-                  const isDim = selected != null && Number(n.id) !== selected;
-                  const r = 4 + Math.min(n.chunk_count ?? 1, 40) / 4;
+                  // Dokumen: disc warna + label. Ukuran ∝ jumlah relasi (derajat).
+                  const r = 4 + Math.min(degree.get(id) ?? 1, 30) / 2;
+                  if (dim) ctx.globalAlpha = 0.2;
                   ctx.beginPath();
                   ctx.arc(x, y, r, 0, 2 * Math.PI);
-                  ctx.fillStyle = isDim ? "#e2e8f0" : nodeColor(n.file_type);
+                  ctx.fillStyle = nodeColor(n.file_type);
                   ctx.fill();
                   ctx.lineWidth = 1.5;
                   ctx.strokeStyle = "#ffffff";
                   ctx.stroke();
-                  if (selected === Number(n.id)) {
+                  ctx.globalAlpha = 1;
+                  if (selected === id) {
                     ctx.beginPath();
                     ctx.arc(x, y, r + 3, 0, 2 * Math.PI);
                     ctx.lineWidth = 2;
                     ctx.strokeStyle = "#0f172a";
+                    ctx.stroke();
+                  }
+                  if (flashId === id) {
+                    ctx.beginPath();
+                    ctx.arc(x, y, r + 5, 0, 2 * Math.PI);
+                    ctx.lineWidth = 3;
+                    ctx.strokeStyle = "#f59e0b";
                     ctx.stroke();
                   }
                   if (globalScale >= 0.5) {
@@ -314,7 +408,7 @@ export default function DocumentGraph() {
                     ctx.lineWidth = 3;
                     ctx.strokeStyle = "rgba(255,255,255,0.85)";
                     ctx.strokeText(label, x, y + r + 2);
-                    ctx.fillStyle = isDim ? "#94a3b8" : "#1e293b";
+                    ctx.fillStyle = dim ? "#94a3b8" : "#1e293b";
                     ctx.fillText(label, x, y + r + 2);
                   }
                 }}
@@ -326,15 +420,38 @@ export default function DocumentGraph() {
                   ctx.fillStyle = color;
                   ctx.fill();
                 }}
-                linkColor={(l: any) => edgeColor(l as GraphEdge)}
+                linkColor={(l: any) => {
+                  if (focusId != null) {
+                    const a = Number(l.source);
+                    const b = Number(l.target);
+                    if (a !== focusId && b !== focusId) return "rgba(148,163,184,0.08)";
+                  }
+                  return edgeColor(l as GraphEdge);
+                }}
                 linkWidth={(l: any) =>
                   level == null
                     ? clusterEdgeWidth(l as GraphEdge)
                     : edgeWidth(l as GraphEdge)
                 }
+                linkLabel={(l: any) => {
+                  const parts: string[] = [];
+                  if (l.semantic != null) parts.push(`Kemiripan ${Number(l.semantic).toFixed(2)}`);
+                  if ((l.citations ?? 0) > 0) parts.push(`${l.citations}× dikutip bersama`);
+                  const pair = parts.join(" · ");
+                  if (level == null) {
+                    const a = clusters.find((c) => c.id === Number(l.source))?.name ?? "";
+                    const b = clusters.find((c) => c.id === Number(l.target))?.name ?? "";
+                    return pair ? `${a} ↔ ${b}\n${pair}` : `${a} ↔ ${b}`;
+                  }
+                  return pair || "terhubung";
+                }}
                 linkCurvature={0.2}
                 linkDirectionalParticles={(l: any) => ((l.citations ?? 0) > 0 ? 2 : 0)}
+                // Tanpa ini, loop repaint berhenti setelah layout menetap dan perubahan
+                // nodeCanvasObject/linkColor (hover dim) tak pernah digambar ulang.
+                autoPauseRedraw={false}
                 d3VelocityDecay={0.35}
+                onNodeHover={(n: any) => setHovered(n == null ? null : Number(n.id))}
                 onEngineStop={() => {
                   if (pendingFit.current) {
                     pendingFit.current = false;
@@ -366,7 +483,7 @@ export default function DocumentGraph() {
 
             {/* Toolbar kaca mengambang */}
             {hasGraph && (
-              <div className="absolute bottom-4 left-4 z-10 flex flex-wrap items-center gap-3 rounded-xl border border-white/60 bg-white/85 px-4 py-3 shadow-lg backdrop-blur">
+              <div className="absolute bottom-4 left-4 z-20 flex flex-wrap items-center gap-3 rounded-xl border border-white/60 bg-white/85 px-4 py-3 shadow-lg backdrop-blur">
                 <label className="flex cursor-pointer items-center gap-1.5 text-xs font-bold text-slate-700">
                   <input
                     type="checkbox"
@@ -383,7 +500,7 @@ export default function DocumentGraph() {
                     onChange={(e) => setShowCit(e.target.checked)}
                   />
                   <span className="h-2 w-2 rounded-full" style={{ background: C_CIT }} />
-                  Kutipan
+                  Dikutip bersama
                 </label>
                 {level != null && (
                   <div className="w-32">
@@ -396,11 +513,76 @@ export default function DocumentGraph() {
                     </Select>
                   </div>
                 )}
+                {level != null && (
+                  <div className="relative">
+                    <input
+                      type="text"
+                      value={search}
+                      onChange={(e) => setSearch(e.target.value)}
+                      placeholder="Cari dokumen…"
+                      className="w-36 rounded-lg border border-slate-200 px-2 py-1 text-xs text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                    {searchMatches.length > 0 && (
+                      <div className="absolute bottom-full left-0 z-30 mb-1 w-72 overflow-hidden rounded-lg border border-slate-200 bg-white shadow-xl">
+                        {searchMatches.map((m) => (
+                          <button
+                            key={m.id}
+                            onClick={() => centerOnNode(Number(m.id))}
+                            className="block w-full truncate px-3 py-1.5 text-left text-xs text-slate-700 hover:bg-blue-50"
+                          >
+                            {m.filename}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+                <span
+                  className="cursor-help text-xs font-bold text-slate-400 hover:text-slate-600"
+                  title={'Skor semantik = kemiripan makna antar dokumen (0–1), dihitung dari embedding teks.\n"Dikutip bersama" = kedua dokumen muncul bersama dalam jawaban AI yang sama.'}
+                >
+                  ⓘ
+                </span>
                 <span className="text-[11px] text-slate-400">
                   {level == null
                     ? `${clusters.length} klaster · ${clusterEdges.filter(passFilter).length} relasi`
                     : `${docNodes.length} dokumen · ${docGraph.links.length} relasi`}
                 </span>
+              </div>
+            )}
+
+            {/* Legend: makna warna edge & node */}
+            {hasGraph && (
+              <div className="absolute bottom-4 right-4 z-10 rounded-xl border border-white/60 bg-white/85 px-3 py-2 text-[11px] text-slate-600 shadow-lg backdrop-blur">
+                <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                  <span className="flex items-center gap-1.5">
+                    <span className="h-[3px] w-5 rounded" style={{ background: C_SEM }} /> semantik
+                  </span>
+                  <span className="flex items-center gap-1.5">
+                    <span className="h-[3px] w-5 rounded" style={{ background: C_CIT }} /> dikutip bersama
+                  </span>
+                  <span className="flex items-center gap-1.5">
+                    <span className="h-[3px] w-5 rounded" style={{ background: "#059669" }} /> keduanya
+                  </span>
+                </div>
+                <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1">
+                  {level == null ? (
+                    <span>ukuran bubble = jumlah dokumen</span>
+                  ) : (
+                    <>
+                      <span className="flex items-center gap-1">
+                        <span className="h-2 w-2 rounded-full" style={{ background: "#1d4ed8" }} /> paparan
+                      </span>
+                      <span className="flex items-center gap-1">
+                        <span className="h-2 w-2 rounded-full" style={{ background: "#047857" }} /> laporan
+                      </span>
+                      <span className="flex items-center gap-1">
+                        <span className="h-2 w-2 rounded-full" style={{ background: "#64748b" }} /> lainnya
+                      </span>
+                      <span>ukuran = jumlah relasi</span>
+                    </>
+                  )}
+                </div>
               </div>
             )}
 
@@ -437,10 +619,69 @@ export default function DocumentGraph() {
           <Card interactive={false}>
             <div className="p-5">
               {level == null ? (
-                <p className="text-sm text-slate-500">
-                  Dokumen dikelompokkan ke {clusters.length} klaster tematik. Klik sebuah klaster
-                  untuk melihat dokumen dan relasi di dalamnya.
-                </p>
+                <>
+                  <p className="text-sm text-slate-500">
+                    Peta {clusters.length} klaster tematik. Hover klaster untuk ringkasan; klik untuk
+                    membuka dokumen dan relasi di dalamnya.
+                  </p>
+                  {hoveredCluster && (
+                    <div className="mt-4 rounded-lg border border-slate-100 bg-slate-50 p-3">
+                      <p className="flex items-center gap-2 text-sm font-extrabold text-slate-900">
+                        <span
+                          className="h-2.5 w-2.5 rounded-full"
+                          style={{ background: CLUSTER_COLOR[hoveredCluster.id] ?? DEFAULT_NODE_COLOR }}
+                        />
+                        {hoveredCluster.name}
+                      </p>
+                      <p className="mt-0.5 text-xs text-slate-500">
+                        {hoveredCluster.doc_count} dokumen
+                      </p>
+                      {hoveredCluster.keywords && hoveredCluster.keywords.length > 0 && (
+                        <div className="mt-2 flex flex-wrap gap-1">
+                          {hoveredCluster.keywords.map((k) => (
+                            <span
+                              key={k}
+                              className="rounded-full border border-slate-200 bg-white px-2 py-0.5 text-[10px] font-semibold text-slate-600"
+                            >
+                              {k}
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                  {topRelations.length > 0 && (
+                    <div className="mt-4">
+                      <p className="mb-2 text-sm font-extrabold text-slate-700">
+                        Relasi Terkuat Antar Klaster
+                      </p>
+                      <ul className="space-y-2">
+                        {topRelations.map((r, i) => (
+                          <li
+                            key={i}
+                            className="rounded-md border border-slate-100 px-3 py-2"
+                          >
+                            <p
+                              className="truncate text-xs font-semibold text-slate-800"
+                              title={`${r.a} ↔ ${r.b}`}
+                            >
+                              {r.a} ↔ {r.b}
+                            </p>
+                            <p className="mt-0.5 text-[11px] text-slate-500">
+                              {r.sem != null && (
+                                <span style={{ color: C_SEM }}>semantik {r.sem.toFixed(2)}</span>
+                              )}
+                              {r.sem != null && r.cit != null && <span> · </span>}
+                              {r.cit != null && (
+                                <span style={{ color: C_CIT }}>{r.cit}× dikutip bersama</span>
+                              )}
+                            </p>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                </>
               ) : selectedNode ? (
                 <>
                   <p
@@ -474,7 +715,7 @@ export default function DocumentGraph() {
                             <p className="mt-0.5 text-[11px] text-slate-500">
                               {r.sem != null && <span style={{ color: C_SEM }}>semantik {r.sem.toFixed(2)}</span>}
                               {r.sem != null && r.cit != null && <span> · </span>}
-                              {r.cit != null && <span style={{ color: C_CIT }}>{r.cit}× kutipan</span>}
+                              {r.cit != null && <span style={{ color: C_CIT }}>{r.cit}× dikutip bersama</span>}
                               {r.sem == null && r.cit == null && <span>—</span>}
                             </p>
                           </li>
@@ -487,6 +728,34 @@ export default function DocumentGraph() {
                 <p className="text-sm text-slate-500">
                   Klik node dokumen untuk melihat detail dan dokumen terkait.
                 </p>
+              )}
+              {level != null && topRelations.length > 0 && (
+                <div className="mt-5">
+                  <p className="mb-2 text-sm font-extrabold text-slate-700">
+                    Relasi Terkuat dalam Klaster
+                  </p>
+                  <ul className="space-y-2">
+                    {topRelations.map((r, i) => (
+                      <li key={i} className="rounded-md border border-slate-100 px-3 py-2">
+                        <p
+                          className="truncate text-xs font-semibold text-slate-800"
+                          title={`${r.a} ↔ ${r.b}`}
+                        >
+                          {r.a} ↔ {r.b}
+                        </p>
+                        <p className="mt-0.5 text-[11px] text-slate-500">
+                          {r.sem != null && (
+                            <span style={{ color: C_SEM }}>semantik {r.sem.toFixed(2)}</span>
+                          )}
+                          {r.sem != null && r.cit != null && <span> · </span>}
+                          {r.cit != null && (
+                            <span style={{ color: C_CIT }}>{r.cit}× dikutip bersama</span>
+                          )}
+                        </p>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
               )}
             </div>
           </Card>

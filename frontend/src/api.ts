@@ -43,7 +43,7 @@ export interface GraphEdge {
   source: number; target: number; semantic: number | null; citations: number | null;
 }
 export interface GraphCluster {
-  id: number; name: string; doc_count: number;
+  id: number; name: string; doc_count: number; keywords?: string[];
 }
 export interface Conversation {
   id: number;
