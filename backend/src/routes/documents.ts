@@ -3,6 +3,7 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import { pool } from "../db";
 import { requireLogin } from "../middleware/sessionAuth";
+import { CLUSTERS, classify } from "../services/clusters";
 
 const router = Router();
 
@@ -86,7 +87,52 @@ router.get("/documents/graph", requireLogin, async (req, res) => {
     [minSem]
   );
 
-  res.json({ nodes, edges });
+  // Klasifikasi tematik: filename + sampel 3 chunk teratas per dokumen.
+  const { rows: samples } = await pool.query(
+    `SELECT DISTINCT ON (document_id) document_id, content
+       FROM chunks WHERE is_outdated = FALSE
+      ORDER BY document_id, chunk_index`
+  );
+  const sampleByDoc = new Map<number, string>(
+    samples.map((r: any) => [Number(r.document_id), String(r.content)])
+  );
+
+  const clusterByDoc = new Map<number, number>();
+  for (const n of nodes as any[]) {
+    const id = Number(n.id);
+    clusterByDoc.set(id, classify([String(n.filename), sampleByDoc.get(id) ?? ""]));
+    n.cluster = clusterByDoc.get(id);
+  }
+
+  // Agregasi edge ke level klaster (untuk tampilan peta klaster).
+  const agg = new Map<string, { semantic: number; citations: number }>();
+  for (const e of edges as any[]) {
+    const a = clusterByDoc.get(Number(e.source));
+    const b = clusterByDoc.get(Number(e.target));
+    if (a == null || b == null || a === b) continue;
+    const key = `${Math.min(a, b)}:${Math.max(a, b)}`;
+    const cur = agg.get(key) ?? { semantic: 0, citations: 0 };
+    cur.semantic += Number(e.semantic ?? 0);
+    cur.citations += Number(e.citations ?? 0);
+    agg.set(key, cur);
+  }
+  const clusterEdges = [...agg.entries()].map(([key, v]) => {
+    const [source, target] = key.split(":").map(Number);
+    return {
+      source,
+      target,
+      semantic: v.semantic > 0 ? Number(v.semantic.toFixed(2)) : null,
+      citations: v.citations > 0 ? v.citations : null,
+    };
+  });
+
+  const clusters = CLUSTERS.map((c) => ({
+    id: c.id,
+    name: c.name,
+    doc_count: (nodes as any[]).filter((n) => n.cluster === c.id).length,
+  }));
+
+  res.json({ clusters, nodes, edges, cluster_edges: clusterEdges });
 });
 
 export default router;

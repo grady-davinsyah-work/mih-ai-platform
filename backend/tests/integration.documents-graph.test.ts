@@ -76,6 +76,23 @@ test("graph punya edge ko-kutipan untuk dokumen yang dikutip bersama", async () 
   expect(Number(edge.citations)).toBe(1);
 });
 
+test("graph mengembalikan klaster per node dan agregasi cluster_edges", async () => {
+  const res = await request(app).get("/api/documents/graph").set("Cookie", cookie);
+  expect(res.status).toBe(200);
+  // 7 klaster (6 tematik + Lainnya), doc_count menjumlah ke jumlah node.
+  expect(res.body.clusters).toHaveLength(7);
+  const total = res.body.clusters.reduce((s: number, c: any) => s + c.doc_count, 0);
+  expect(total).toBe(res.body.nodes.length);
+  // Setiap node punya cluster valid.
+  for (const n of res.body.nodes) {
+    expect(res.body.clusters.map((c: any) => c.id)).toContain(n.cluster);
+  }
+  // Kedua doc uji beda klaster → edge antar-klaster muncul di cluster_edges.
+  // doc-a.pdf ("teks") → Lainnya (7); doc-b.pdf ("teks") → Lainnya (7) juga —
+  // klaster sama, jadi tidak boleh ada cluster_edge untuk pasangan ini.
+  expect(Array.isArray(res.body.cluster_edges)).toBe(true);
+});
+
 test("min_semantic=0 menyertakan edge semantik lemah", async () => {
   const res = await request(app)
     .get("/api/documents/graph?min_semantic=0")

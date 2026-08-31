@@ -37,9 +37,13 @@ export interface ContentItem {
 }
 export interface GraphNode {
   id: number; filename: string; file_type: string; source: string; chunk_count: number;
+  cluster: number;
 }
 export interface GraphEdge {
   source: number; target: number; semantic: number | null; citations: number | null;
+}
+export interface GraphCluster {
+  id: number; name: string; doc_count: number;
 }
 export interface Conversation {
   id: number;
@@ -89,7 +93,10 @@ export const api = {
   revokeToken: (id: number) => req<{ ok: boolean }>(`/api/admin/tokens/${id}/revoke`, { method: "POST" }),
   usageLogs: () => req<any[]>("/api/admin/usage-logs"),
   documents: () => req<DocumentRow[]>("/api/admin/documents"),
-  documentGraph: () => req<{ nodes: GraphNode[]; edges: GraphEdge[] }>("/api/documents/graph"),
+  documentGraph: () =>
+    req<{ clusters: GraphCluster[]; nodes: GraphNode[]; edges: GraphEdge[]; cluster_edges: GraphEdge[] }>(
+      "/api/documents/graph"
+    ),
   uploadDocument: (file: File, fileType?: string) => {
     const fd = new FormData();
     fd.append("file", file);

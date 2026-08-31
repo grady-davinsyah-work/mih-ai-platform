@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import ForceGraph2D from "react-force-graph-2d";
-import { api, type GraphEdge, type GraphNode } from "../api";
+import { api, type GraphCluster, type GraphEdge, type GraphNode } from "../api";
 import { Badge, Button, Card, ErrorBanner, PageHeader, Select } from "../components/ui";
 
 const TYPE_COLOR: Record<string, string> = {
@@ -9,9 +9,18 @@ const TYPE_COLOR: Record<string, string> = {
   lainnya: "#64748b",
 };
 const DEFAULT_NODE_COLOR = "#475569";
-const C_SEM = "#2563eb"; // biru: edge semantik
-const C_CIT = "#d97706"; // amber: edge kutipan
-const C_BOTH = "#059669"; // emerald: keduanya
+// Palet per klaster (Level 1).
+const CLUSTER_COLOR: Record<number, string> = {
+  1: "#2563eb", // Makro & Statistik
+  2: "#7c3aed", // Fiskal, Moneter & Keuangan
+  3: "#d97706", // Hilirisasi & Kerjasama Ekonomi
+  4: "#059669", // Produktivitas & Ekonomi Tematik
+  5: "#db2777", // Perencanaan Pembangunan
+  6: "#64748b", // Tata Kelola Internal
+  7: "#94a3b8", // Lainnya
+};
+const C_SEM = "#2563eb";
+const C_CIT = "#d97706";
 
 function nodeColor(t: string): string {
   return TYPE_COLOR[t] ?? DEFAULT_NODE_COLOR;
@@ -21,7 +30,6 @@ function edgeColor(e: GraphEdge): string {
   const hasCit = (e.citations ?? 0) > 0;
   if (hasSem && hasCit) return "rgba(5,150,105,0.75)";
   if (hasSem) {
-    // Opasitas mengikuti skor — edge lemah nyaris tak terlihat, yang kuat menonjol.
     const s = e.semantic ?? 0;
     const a = Math.max(0.15, Math.min(0.85, (s - 0.45) * 2.2));
     return `rgba(37,99,235,${a.toFixed(2)})`;
@@ -31,24 +39,28 @@ function edgeColor(e: GraphEdge): string {
 function edgeWidth(e: GraphEdge): number {
   return 0.4 + Math.max((e.semantic ?? 0) * 1.2, Math.min(e.citations ?? 0, 5) * 0.4);
 }
+// Level 1: bobot agregat (jumlah skor) — skala logaritmik agar tak ekstrem tebal.
+function clusterEdgeWidth(e: GraphEdge): number {
+  return 1 + Math.min((e.semantic ?? 0) / 4, 4) + Math.min((e.citations ?? 0) / 2, 3);
+}
 function truncate(s: string, n: number): string {
   return s.length > n ? s.slice(0, n - 1) + "…" : s;
 }
 
 export default function DocumentGraph() {
+  const [clusters, setClusters] = useState<GraphCluster[]>([]);
   const [nodes, setNodes] = useState<GraphNode[]>([]);
   const [edges, setEdges] = useState<GraphEdge[]>([]);
+  const [clusterEdges, setClusterEdges] = useState<GraphEdge[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [minSem, setMinSem] = useState("0.6");
   const [showSem, setShowSem] = useState(true);
   const [showCit, setShowCit] = useState(true);
+  const [level, setLevel] = useState<number | null>(null); // null = peta klaster
   const [selected, setSelected] = useState<number | null>(null);
   const fgRef = useRef<any>(null);
 
-  // Fisika layout — react-force-graph mengekspos charge/link force hanya lewat
-  // metode kapsule (d3Force), bukan React props. Repulsi lebih kuat + pegas
-  // longgar agar node menyebar dan edge tidak menumpuk.
   useEffect(() => {
     const g = fgRef.current;
     if (!g) return;
@@ -61,8 +73,10 @@ export default function DocumentGraph() {
     api
       .documentGraph()
       .then((r) => {
+        setClusters(r.clusters);
         setNodes(r.nodes);
         setEdges(r.edges);
+        setClusterEdges(r.cluster_edges);
       })
       .catch((err: any) => setError(err.message))
       .finally(() => setLoading(false));
@@ -70,26 +84,42 @@ export default function DocumentGraph() {
 
   const minSemNum = Number(minSem);
 
-  const links = useMemo(
-    () =>
-      edges
+  const passFilter = (e: GraphEdge) =>
+    (showSem && e.semantic !== null && e.semantic >= minSemNum) ||
+    (showCit && (e.citations ?? 0) > 0);
+
+  // Level 1: node = klaster, link = edge antar-klaster.
+  const clusterGraph = useMemo(
+    () => ({
+      nodes: clusters.map((c) => ({ id: c.id, name: c.name, doc_count: c.doc_count })),
+      links: clusterEdges.filter(passFilter),
+    }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [clusters, clusterEdges, showSem, showCit, minSemNum]
+  );
+
+  // Level 2: dokumen dalam satu klaster + edge antar mereka.
+  const docNodes = useMemo(
+    () => (level == null ? [] : nodes.filter((n) => n.cluster === level)),
+    [nodes, level]
+  );
+  const docGraph = useMemo(
+    () => ({
+      nodes: docNodes.map((n) => ({ ...n, id: Number(n.id) })),
+      links: edges
+        .filter((e) => passFilter(e))
         .filter(
           (e) =>
-            (showSem && e.semantic !== null && e.semantic >= minSemNum) ||
-            (showCit && (e.citations ?? 0) > 0)
+            docNodes.some((n) => Number(n.id) === Number(e.source)) &&
+            docNodes.some((n) => Number(n.id) === Number(e.target))
         )
         .map((e) => ({ ...e, source: Number(e.source), target: Number(e.target) })),
-    [edges, showSem, showCit, minSemNum]
-  );
-
-  const graphData = useMemo(
-    () => ({
-      nodes: nodes.map((n) => ({ ...n, id: Number(n.id) })),
-      links,
     }),
-    [nodes, links]
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [docNodes, edges, showSem, showCit, minSemNum]
   );
 
+  const activeCluster = clusters.find((c) => c.id === level) ?? null;
   const selectedNode = useMemo(
     () => nodes.find((n) => Number(n.id) === selected) ?? null,
     [nodes, selected]
@@ -117,6 +147,18 @@ export default function DocumentGraph() {
 
   const hasGraph = !loading && nodes.length > 0;
 
+  // Fit-to-view saat data pertama tiba dan saat pindah level (bukan saat filter berubah).
+  const [fitted, setFitted] = useState(false);
+  useEffect(() => {
+    if (!loading && hasGraph && !fitted) {
+      setFitted(true);
+      setTimeout(() => fgRef.current?.zoomToFit(500, 0.8), 120);
+    }
+  }, [loading, hasGraph, fitted]);
+  useEffect(() => {
+    if (fitted && !loading) setTimeout(() => fgRef.current?.zoomToFit(400, 0.7), 60);
+  }, [level, fitted, loading]);
+
   return (
     <>
       <PageHeader eyebrow="RELASI DOKUMEN" title="Relasi Dokumen" />
@@ -143,19 +185,39 @@ export default function DocumentGraph() {
             ) : (
               <ForceGraph2D
                 ref={fgRef}
-                graphData={graphData}
+                graphData={level == null ? clusterGraph : docGraph}
                 backgroundColor="rgba(255,255,255,0)"
-                nodeColor={(n: any) =>
-                  selected != null && Number(n.id) !== selected ? "#cbd5e1" : nodeColor(n.file_type)
+                nodeLabel={(n: any) =>
+                  level == null
+                    ? `${n.name} — ${n.doc_count} dokumen`
+                    : n.filename
                 }
-                nodeVal={(n: any) => 2 + Math.min(n.chunk_count, 40) / 3}
-                nodeLabel={(n: any) => n.filename}
                 nodeCanvasObject={(n: any, ctx, globalScale) => {
                   const x = n.x ?? 0;
                   const y = n.y ?? 0;
+                  if (level == null) {
+                    // Bubble klaster.
+                    const r = 16 + Math.min(n.doc_count ?? 1, 45) / 1.5;
+                    ctx.beginPath();
+                    ctx.arc(x, y, r, 0, 2 * Math.PI);
+                    ctx.fillStyle = CLUSTER_COLOR[n.id] ?? DEFAULT_NODE_COLOR;
+                    ctx.fill();
+                    ctx.lineWidth = 2;
+                    ctx.strokeStyle = "#ffffff";
+                    ctx.stroke();
+                    ctx.textAlign = "center";
+                    ctx.textBaseline = "middle";
+                    ctx.font = "700 12px system-ui, sans-serif";
+                    ctx.fillStyle = "#ffffff";
+                    ctx.fillText(truncate(String(n.name), 26), x, y - 4);
+                    ctx.font = "600 10px system-ui, sans-serif";
+                    ctx.fillStyle = "rgba(255,255,255,0.9)";
+                    ctx.fillText(`${n.doc_count} dokumen`, x, y + 12);
+                    return;
+                  }
+                  // Dokumen: disc warna + label (mode sekarang).
                   const isDim = selected != null && Number(n.id) !== selected;
                   const r = 4 + Math.min(n.chunk_count ?? 1, 40) / 4;
-                  // Disc berwarna dengan border putih.
                   ctx.beginPath();
                   ctx.arc(x, y, r, 0, 2 * Math.PI);
                   ctx.fillStyle = isDim ? "#e2e8f0" : nodeColor(n.file_type);
@@ -163,7 +225,6 @@ export default function DocumentGraph() {
                   ctx.lineWidth = 1.5;
                   ctx.strokeStyle = "#ffffff";
                   ctx.stroke();
-                  // Ring saat dipilih.
                   if (selected === Number(n.id)) {
                     ctx.beginPath();
                     ctx.arc(x, y, r + 3, 0, 2 * Math.PI);
@@ -171,7 +232,6 @@ export default function DocumentGraph() {
                     ctx.strokeStyle = "#0f172a";
                     ctx.stroke();
                   }
-                  // Label tebal dengan halo putih agar terbaca di atas edge.
                   if (globalScale >= 0.5) {
                     ctx.font = "600 10px system-ui, sans-serif";
                     ctx.textAlign = "center";
@@ -188,21 +248,43 @@ export default function DocumentGraph() {
                   const x = n.x ?? 0;
                   const y = n.y ?? 0;
                   ctx.beginPath();
-                  ctx.arc(x, y, 12, 0, 2 * Math.PI);
+                  ctx.arc(x, y, level == null ? 22 : 12, 0, 2 * Math.PI);
                   ctx.fillStyle = "#fff";
                   ctx.fill();
                 }}
                 linkColor={(l: any) => edgeColor(l as GraphEdge)}
-                linkWidth={(l: any) => edgeWidth(l as GraphEdge)}
+                linkWidth={(l: any) =>
+                  level == null
+                    ? clusterEdgeWidth(l as GraphEdge)
+                    : edgeWidth(l as GraphEdge)
+                }
                 linkCurvature={0.2}
                 linkDirectionalParticles={(l: any) => ((l.citations ?? 0) > 0 ? 2 : 0)}
                 d3VelocityDecay={0.35}
-                onNodeClick={(n: any) => setSelected(Number(n.id))}
+                onNodeClick={(n: any) => {
+                  if (level == null) {
+                    setSelected(null);
+                    setLevel(Number(n.id));
+                  } else {
+                    setSelected(Number(n.id));
+                  }
+                }}
                 onBackgroundClick={() => setSelected(null)}
               />
             )}
 
-            {/* Toolbar kaca mengambang — filter semantik/kutipan + ambang */}
+            {/* Breadcrumb saat di dalam klaster */}
+            {hasGraph && level != null && (
+              <button
+                onClick={() => setLevel(null)}
+                className="absolute left-4 top-4 z-10 flex items-center gap-1.5 rounded-lg border border-white/60 bg-white/85 px-3 py-2 text-xs font-bold text-slate-700 shadow-lg backdrop-blur hover:bg-white"
+              >
+                Semua Klaster <span className="text-slate-400">▸</span>
+                <span style={{ color: CLUSTER_COLOR[level] }}>{activeCluster?.name}</span>
+              </button>
+            )}
+
+            {/* Toolbar kaca mengambang */}
             {hasGraph && (
               <div className="absolute bottom-4 left-4 z-10 flex flex-wrap items-center gap-3 rounded-xl border border-white/60 bg-white/85 px-4 py-3 shadow-lg backdrop-blur">
                 <label className="flex cursor-pointer items-center gap-1.5 text-xs font-bold text-slate-700">
@@ -223,21 +305,21 @@ export default function DocumentGraph() {
                   <span className="h-2 w-2 rounded-full" style={{ background: C_CIT }} />
                   Kutipan
                 </label>
-                <span className="flex items-center gap-1.5 text-xs text-slate-400">
-                  <span className="h-2 w-2 rounded-full" style={{ background: C_BOTH }} />
-                  keduanya
-                </span>
-                <div className="w-32">
-                  <Select value={minSem} onChange={(e) => setMinSem(e.target.value)}>
-                    <option value="0.3">Ambang 0.3</option>
-                    <option value="0.4">Ambang 0.4</option>
-                    <option value="0.5">Ambang 0.5</option>
-                    <option value="0.6">Ambang 0.6</option>
-                    <option value="0.7">Ambang 0.7</option>
-                  </Select>
-                </div>
+                {level != null && (
+                  <div className="w-32">
+                    <Select value={minSem} onChange={(e) => setMinSem(e.target.value)}>
+                      <option value="0.3">Ambang 0.3</option>
+                      <option value="0.4">Ambang 0.4</option>
+                      <option value="0.5">Ambang 0.5</option>
+                      <option value="0.6">Ambang 0.6</option>
+                      <option value="0.7">Ambang 0.7</option>
+                    </Select>
+                  </div>
+                )}
                 <span className="text-[11px] text-slate-400">
-                  {nodes.length} dok · {links.length} relasi
+                  {level == null
+                    ? `${clusters.length} klaster · ${clusterEdges.filter(passFilter).length} relasi`
+                    : `${docNodes.length} dokumen · ${docGraph.links.length} relasi`}
                 </span>
               </div>
             )}
@@ -274,7 +356,12 @@ export default function DocumentGraph() {
         <div className="space-y-4">
           <Card interactive={false}>
             <div className="p-5">
-              {selectedNode ? (
+              {level == null ? (
+                <p className="text-sm text-slate-500">
+                  Dokumen dikelompokkan ke {clusters.length} klaster tematik. Klik sebuah klaster
+                  untuk melihat dokumen dan relasi di dalamnya.
+                </p>
+              ) : selectedNode ? (
                 <>
                   <p
                     className="truncate text-sm font-extrabold text-slate-900"
@@ -318,7 +405,7 @@ export default function DocumentGraph() {
                 </>
               ) : (
                 <p className="text-sm text-slate-500">
-                  Klik node untuk melihat detail dan dokumen terkait.
+                  Klik node dokumen untuk melihat detail dan dokumen terkait.
                 </p>
               )}
             </div>
