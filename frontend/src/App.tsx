@@ -64,7 +64,7 @@ function Topbar() {
           <strong>ID</strong> Indonesia
         </span>
         <span className="ml-auto hidden text-xs text-slate-300 md:block">
-          Agen AI Kedeputian Makro
+          Macro Intelligence Hub (MIH) Kedeputian PMP
         </span>
       </div>
     </div>
@@ -83,7 +83,7 @@ function SiteHeader({ user, onLogout }: { user: User; onLogout: () => void }) {
               Kedeputian Bidang Perencanaan Makro
             </span>
             <span className="block text-xs font-semibold text-blue-900">
-              Agen AI & Playground
+              Macro Intelligence Hub (MIH)
             </span>
           </span>
         </Link>
