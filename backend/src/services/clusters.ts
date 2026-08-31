@@ -27,7 +27,7 @@ export const CLUSTERS: ClusterDef[] = [
       "postur makro fiskal", "makro fiskal", "fiskal daerah", "transfer ke daerah", "tkd",
       "pinjaman daerah", "moneter", "inflasi", "nilai tukar", "kurs", "ihsg",
       "sektor keuangan", "belanja tkd", "apbn", "apbd", "kualitas belanja",
-      "perbankan", "bank indonesia", "suku bunga",
+      "perbankan", "bank indonesia", "suku bunga", "danantara",
     ],
   },
   {
@@ -38,7 +38,7 @@ export const CLUSTERS: ClusterDef[] = [
       "aren", "kopi", "kakao", "batu bara", "agrotechnopreneur", "ekspor",
       "kerjasama ekonomi internasional", "kerja sama ekonomi", "verbal note",
       "world bank", "partnership", "geopolitik", "geopolitic", "tariff", "tarif",
-      "sumber daya alam", "ksp", "danantara", "hibah luar negeri",
+      "sumber daya alam", "ksp", "hibah luar negeri",
     ],
   },
   {
@@ -48,6 +48,7 @@ export const CLUSTERS: ClusterDef[] = [
       "produktivitas", "master plan produktivitas", "ekonomi biru", "ekonomi hijau",
       "ekonomi oranye", "blue economy", "green economy", "orange economy",
       "green growth", "creative hub", "ekonomi kreatif", "genom",
+      "hijau", "biru", "oranye", "kreatif",
     ],
   },
   {
@@ -57,8 +58,7 @@ export const CLUSTERS: ClusterDef[] = [
       "peta jalan", "rencana aksi", "blueprint", "roadmap", "rkp", "rpjmn", "rpjpn",
       "rpjpd", "perpres rkp", "ranwal", "penyusunan perencanaan", "transformasi ekonomi",
       "trisula pembangunan", "prioritas pembangunan", "psn", "proyek strategis nasional",
-      "digital transformation", "perencanaan", "pengendalian intern pemerintah", "spip",
-      "dekon", "dekonsentrasi", "penyelarasan",
+      "digital transformation", "perencanaan", "dekon", "dekonsentrasi", "penyelarasan",
     ],
   },
   {
@@ -69,6 +69,7 @@ export const CLUSTERS: ClusterDef[] = [
       "sdm", "asn", "kearsipan", "bmn", "barang milik negara", "pengadaan",
       "perbendaharaan", "audit", "rumah tangga", "protokol", "ortala", "rab",
       "kapasitas asn", "insentif", "disinsentif", "format penamaan",
+      "spip", "sistem pengendalian intern",
     ],
   },
   { id: CLUSTER_LAINNYA, name: "Lainnya", keywords: [] },
