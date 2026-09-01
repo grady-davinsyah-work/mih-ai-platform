@@ -46,6 +46,56 @@ function clusterEdgeWidth(e: GraphEdge): number {
 function truncate(s: string, n: number): string {
   return s.length > n ? s.slice(0, n - 1) + "…" : s;
 }
+// Jari-jari disc dokumen: kecil → besar, ∝ jumlah relasi (derajat).
+function docRadius(n: any, deg: Map<number, number>): number {
+  return 4 + Math.min(deg.get(Number(n.id)) ?? 1, 30) / 2;
+}
+// Force collide sebaris d3.forceCollide: dorong node yang tumpang tindih
+// (jarak pusat < jumlah jari-jari + padding) — kunci anti-tumpuk (pola Hilirisasi).
+function collideForce(getNodes: () => any[], radius: (n: any) => number, pad: number) {
+  return (alpha: number) => {
+    const nodes = getNodes();
+    for (let i = 0; i < nodes.length; i++) {
+      for (let j = i + 1; j < nodes.length; j++) {
+        const a = nodes[i];
+        const b = nodes[j];
+        let dx = (b.x ?? 0) - (a.x ?? 0);
+        let dy = (b.y ?? 0) - (a.y ?? 0);
+        const l2 = dx * dx + dy * dy;
+        const minD = radius(a) + radius(b) + pad;
+        if (l2 > 0 && l2 < minD * minD) {
+          const l = Math.sqrt(l2);
+          const push = ((minD - l) / l) * alpha;
+          a.vx = (a.vx ?? 0) - dx * push;
+          a.vy = (a.vy ?? 0) - dy * push;
+          b.vx = (b.vx ?? 0) + dx * push;
+          b.vy = (b.vy ?? 0) + dy * push;
+        }
+      }
+    }
+  };
+}
+// Force batas kotak: jaga node tetap di dalam viewport.
+function boundsForce(
+  getNodes: () => any[],
+  radius: (n: any) => number,
+  w: number,
+  h: number,
+  m: number
+) {
+  return (alpha: number) => {
+    const k = 0.15 * alpha;
+    for (const n of getNodes()) {
+      const x = n.x ?? 0;
+      const y = n.y ?? 0;
+      const r = radius(n) + 12;
+      if (x < m + r) n.vx = (n.vx ?? 0) + (m + r - x) * k;
+      if (x > w - m - r) n.vx = (n.vx ?? 0) - (x - (w - m - r)) * k;
+      if (y < m + r) n.vy = (n.vy ?? 0) + (m + r - y) * k;
+      if (y > h - m - r) n.vy = (n.vy ?? 0) - (y - (h - m - r)) * k;
+    }
+  };
+}
 
 export default function DocumentGraph() {
   const [clusters, setClusters] = useState<GraphCluster[]>([]);
@@ -57,12 +107,16 @@ export default function DocumentGraph() {
   const [minSem, setMinSem] = useState("0.6");
   const [showSem, setShowSem] = useState(true);
   const [showCit, setShowCit] = useState(true);
-  const [level, setLevel] = useState<number | null>(null); // null = peta klaster
+  const [level, setLevel] = useState<number | null>(null); // klaster terpilih (drilldown)
+  const [view, setView] = useState<"map" | "all" | "cluster">("map"); // map = peta klaster, all = semua dokumen, cluster = drilldown
   const [selected, setSelected] = useState<number | null>(null);
   const [hovered, setHovered] = useState<number | null>(null);
   const [flashId, setFlashId] = useState<number | null>(null); // ring highlight hasil pencarian
   const [search, setSearch] = useState("");
   const fgRef = useRef<any>(null);
+  // Cermin graphData aktif — dipakai getter force (bounds/collide/clusterX/Y).
+  // Menghindari g.graphData() pada instance yang ternyata bukan fungsi di tick.
+  const graphDataRef = useRef<any>({ nodes: [], links: [] });
   // ForceGraph2D default lebar/tinggi = window.innerWidth/innerHeight, bukan ukuran
   // kontainer → canvas membesar (mis. 1400×900) melebihi kotak visible sehingga node
   // terpotong dan tak bisa diklik. Ukur kotak graf dan teruskan sebagai prop.
@@ -80,69 +134,6 @@ export default function DocumentGraph() {
     ro.observe(el);
     return () => ro.disconnect();
   }, []);
-
-  useEffect(() => {
-    const g = fgRef.current;
-    if (!g) return;
-    if (level == null) {
-      // Level 1 (klaster): bubble renggang supaya edge antar-klaster terlihat.
-      // Charge sebanding jari-jari (bubble besar tolak lebih kuat) + link panjang
-      // dengan tarikan lemah + collide agar bubble tak saling tumpuk.
-      const radius = (n: any) => 16 + Math.min(n.doc_count ?? 1, 45) / 1.5;
-      g.d3Force("charge")?.strength((n: any) => -6 * radius(n));
-      g.d3Force("link")?.distance((l: any) => 100 + Math.min((l.semantic ?? 0) / 4, 40));
-      g.d3Force("link")?.strength(0.05);
-      g.d3Force(
-        "bounds",
-        (alpha: number) => {
-          // Jaga bubble tetap dalam kotak graf. Tanpa edge (data kosong) charge
-          // bisa mendorong klaster jauh ke luar viewport.
-          const m = 40;
-          const w = graphSize.width;
-          const h = graphSize.height;
-          const k = 0.15 * alpha;
-          for (const n of g.graphData().nodes) {
-            const x = n.x ?? 0;
-            const y = n.y ?? 0;
-            const r = radius(n) + 12;
-            if (x < m + r) n.vx = (n.vx ?? 0) + (m + r - x) * k;
-            if (x > w - m - r) n.vx = (n.vx ?? 0) - (x - (w - m - r)) * k;
-            if (y < m + r) n.vy = (n.vy ?? 0) + (m + r - y) * k;
-            if (y > h - m - r) n.vy = (n.vy ?? 0) - (y - (h - m - r)) * k;
-          }
-        }
-      );
-      g.d3Force(
-        "collide",
-        (alpha: number) => {
-          const nodes = g.graphData().nodes;
-          for (let i = 0; i < nodes.length; i++) {
-            for (let j = i + 1; j < nodes.length; j++) {
-              const a = nodes[i], b = nodes[j];
-              let dx = (b.x ?? 0) - (a.x ?? 0), dy = (b.y ?? 0) - (a.y ?? 0);
-              const l2 = dx * dx + dy * dy;
-              const minD = radius(a) + radius(b) + 14;
-              if (l2 > 0 && l2 < minD * minD) {
-                const l = Math.sqrt(l2);
-                const push = ((minD - l) / l) * alpha;
-                a.vx = (a.vx ?? 0) - dx * push;
-                a.vy = (a.vy ?? 0) - dy * push;
-                b.vx = (b.vx ?? 0) + dx * push;
-                b.vy = (b.vy ?? 0) + dy * push;
-              }
-            }
-          }
-        }
-      );
-    } else {
-      // Level 2 (dokumen): spacing standar, tanpa collide.
-      g.d3Force("charge")?.strength(-70);
-      g.d3Force("link")?.distance(45);
-      g.d3Force("link")?.strength(0.25);
-      g.d3Force("collide", null);
-      g.d3Force("bounds", null);
-    }
-  }, [level, graphSize]);
 
   useEffect(() => {
     api
@@ -194,11 +185,25 @@ export default function DocumentGraph() {
     [docNodes, edges, showSem, showCit, minSemNum]
   );
 
+  // Mode "Semua Dokumen": semua dokumen lintas klaster + semua edge yang lolos
+  // filter. Backend sudah mengirim cluster per node + edge lintas dokumen.
+  const allDocGraph = useMemo(
+    () => ({
+      nodes: nodes.map((n) => ({ ...n, id: Number(n.id) })),
+      links: edges
+        .filter((e) => passFilter(e))
+        .map((e) => ({ ...e, source: Number(e.source), target: Number(e.target) })),
+    }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [nodes, edges, showSem, showCit, minSemNum]
+  );
+
   // Fokus untuk highlight lingkungan: node hover (atau dokumen terpilih di Level 2).
   const focusId = hovered ?? selected;
   const neighborIds = useMemo(() => {
     if (focusId == null) return null;
-    const links = level == null ? clusterGraph.links : docGraph.links;
+    const links =
+      view === "map" ? clusterGraph.links : view === "all" ? allDocGraph.links : docGraph.links;
     const s = new Set<number>([focusId]);
     for (const l of links as any[]) {
       const a = Number(l.source);
@@ -207,9 +212,9 @@ export default function DocumentGraph() {
       if (b === focusId) s.add(a);
     }
     return s;
-  }, [focusId, level, clusterGraph.links, docGraph.links]);
+  }, [focusId, level, clusterGraph.links, allDocGraph.links, docGraph.links]);
 
-  // Level 2: ukuran node ∝ jumlah relasi (derajat) — dokumen paling terhubung terlihat.
+  // Ukuran node ∝ jumlah relasi (derajat) — dokumen paling terhubung terlihat.
   const degree = useMemo(() => {
     const m = new Map<number, number>();
     for (const l of docGraph.links as any[]) {
@@ -218,19 +223,117 @@ export default function DocumentGraph() {
     }
     return m;
   }, [docGraph.links]);
+  const degreeAll = useMemo(() => {
+    const m = new Map<number, number>();
+    for (const l of allDocGraph.links as any[]) {
+      m.set(Number(l.source), (m.get(Number(l.source)) ?? 0) + 1);
+      m.set(Number(l.target), (m.get(Number(l.target)) ?? 0) + 1);
+    }
+    return m;
+  }, [allDocGraph.links]);
 
-  // Pencarian dokumen dalam klaster aktif.
+  // Konfigurasi force per mode. Ditempatkan setelah memo degree/degreeAll karena
+  // deps effect mereferensinya (deps dievaluasi saat render → TDZ bila di atas).
+  useEffect(() => {
+    const g = fgRef.current;
+    if (!g) return;
+    if (view === "map") {
+      // Level 1 (klaster): bubble renggang supaya edge antar-klaster terlihat.
+      // Charge sebanding jari-jari (bubble besar tolak lebih kuat) + link panjang
+      // dengan tarikan lemah + collide agar bubble tak saling tumpuk.
+      const radius = (n: any) => 16 + Math.min(n.doc_count ?? 1, 45) / 1.5;
+      g.d3Force("charge")?.strength((n: any) => -6 * radius(n));
+      g.d3Force("link")?.distance((l: any) => 100 + Math.min((l.semantic ?? 0) / 4, 40));
+      g.d3Force("link")?.strength(0.05);
+      g.d3Force("x", null);
+      g.d3Force("y", null);
+      g.d3Force("clusterX", null);
+      g.d3Force("clusterY", null);
+      g.d3Force(
+        "bounds",
+        boundsForce(() => graphDataRef.current.nodes, radius, graphSize.width, graphSize.height, 40)
+      );
+      g.d3Force("collide", collideForce(() => graphDataRef.current.nodes, radius, 14));
+    } else if (view === "all") {
+      // Mode "Semua Dokumen" — combined network ala Dashboard Hilirisasi.
+      // Semua dokumen lintas klaster dalam satu graf: charge kuat + link panjang
+      // + collide radius+10 agar node tak menumpuk, ditambah forceX/Y per klaster
+      // supaya dokumen tiap klaster tersusun dalam kolom yang mudah dibaca.
+      const radius = (n: any) => docRadius(n, degreeAll);
+      g.d3Force("charge")?.strength(-300);
+      g.d3Force("link")?.distance(100);
+      g.d3Force("link")?.strength(0.8);
+      g.d3Force("center", null);
+      // Kolom klaster dihitung dari data memo, bukan g.graphData() — instance
+      // graph belum tentu siap saat effect berjalan (lihat g.graphData bukan fungsi).
+      const ids = (
+        [...new Set(allDocGraph.nodes.map((n: any) => n.cluster as number))] as number[]
+      ).sort((a, b) => a - b);
+      const mX = 70;
+      const colX = (c: number) =>
+        ids.length <= 1
+          ? graphSize.width / 2
+          : (ids.indexOf(c) / (ids.length - 1)) * (graphSize.width - 2 * mX) + mX;
+      g.d3Force(
+        "clusterX",
+        (alpha: number) => {
+          const k = 0.09 * alpha;
+          for (const n of graphDataRef.current.nodes) {
+            const tx = colX(n.cluster as number);
+            n.vx = (n.vx ?? 0) + (tx - (n.x ?? 0)) * k;
+          }
+        }
+      );
+      g.d3Force(
+        "clusterY",
+        (alpha: number) => {
+          // Stagger dua baris per kolom agar kolom tak jadi satu garis datar.
+          const k = 0.06 * alpha;
+          const h = graphSize.height;
+          for (const n of graphDataRef.current.nodes) {
+            const ty = h / 2 + (((n.cluster as number) % 2 === 0 ? 1 : -1) * h) / 8;
+            n.vy = (n.vy ?? 0) + (ty - (n.y ?? 0)) * k;
+          }
+        }
+      );
+      g.d3Force(
+        "bounds",
+        boundsForce(() => graphDataRef.current.nodes, radius, graphSize.width, graphSize.height, 30)
+      );
+      g.d3Force("collide", collideForce(() => graphDataRef.current.nodes, radius, 10));
+    } else {
+      // Level 2 (dokumen satu klaster): spacing standar + collide & bounds
+      // agar dokumen tak menumpuk (sebelumnya collide di-null → node bertumpuk).
+      const radius = (n: any) => docRadius(n, degree);
+      g.d3Force("charge")?.strength(-70);
+      g.d3Force("link")?.distance(45);
+      g.d3Force("link")?.strength(0.25);
+      g.d3Force("x", null);
+      g.d3Force("y", null);
+      g.d3Force("clusterX", null);
+      g.d3Force("clusterY", null);
+      g.d3Force(
+        "bounds",
+        boundsForce(() => graphDataRef.current.nodes, radius, graphSize.width, graphSize.height, 30)
+      );
+      g.d3Force("collide", collideForce(() => graphDataRef.current.nodes, radius, 10));
+    }
+  }, [view, level, graphSize, degree, degreeAll]);
+
+  // Pencarian dokumen (drilldown klaster atau mode semua dokumen).
   const searchMatches = useMemo(() => {
     const q = search.trim().toLowerCase();
-    if (level == null || q.length < 2) return [];
-    return docNodes.filter((n) => n.filename.toLowerCase().includes(q)).slice(0, 6);
-  }, [search, level, docNodes]);
+    if (view === "map" || q.length < 2) return [];
+    const hay = view === "all" ? nodes : docNodes;
+    return hay.filter((n) => n.filename.toLowerCase().includes(q)).slice(0, 6);
+  }, [search, view, nodes, docNodes]);
 
-  // Relasi terkuat untuk panel insight (Level 1 antar-klaster, Level 2 antar-dokumen).
+  // Relasi terkuat untuk panel insight (peta klaster = antar-klaster, selain itu antar-dokumen).
   const topRelations = useMemo(() => {
-    const links = level == null ? clusterGraph.links : docGraph.links;
+    const links =
+      view === "map" ? clusterGraph.links : view === "all" ? allDocGraph.links : docGraph.links;
     const nameOf = (id: number) => {
-      if (level == null) return clusters.find((c) => c.id === id)?.name ?? `#${id}`;
+      if (view === "map") return clusters.find((c) => c.id === id)?.name ?? `#${id}`;
       return nodes.find((n) => Number(n.id) === id)?.filename ?? `#${id}`;
     };
     return (links as GraphEdge[])
@@ -243,10 +346,10 @@ export default function DocumentGraph() {
       }))
       .sort((x, y) => y.score - x.score)
       .slice(0, 5);
-  }, [level, clusterGraph.links, docGraph.links, clusters, nodes]);
+  }, [view, clusterGraph.links, allDocGraph.links, docGraph.links, clusters, nodes]);
 
   const hoveredCluster =
-    level == null && hovered != null ? clusters.find((c) => c.id === hovered) ?? null : null;
+    view === "map" && hovered != null ? clusters.find((c) => c.id === hovered) ?? null : null;
 
   // Ring highlight pencarian hilang setelah beberapa detik.
   useEffect(() => {
@@ -290,6 +393,8 @@ export default function DocumentGraph() {
   }, [selected, edges, nodes]);
 
   const hasGraph = !loading && nodes.length > 0;
+  // Cermin graphData aktif agar getter force selalu membaca data terkini.
+  graphDataRef.current = view === "map" ? clusterGraph : view === "all" ? allDocGraph : docGraph;
 
   // Fit-to-view setelah layout menetap (onEngineStop), bukan timer tetap — saat
   // data pertama tiba node masih mengumpul di tengah, fit di 120ms terlalu cepat
@@ -300,7 +405,7 @@ export default function DocumentGraph() {
   }, [hasGraph]);
   useEffect(() => {
     if (hasGraph) pendingFit.current = true;
-  }, [level, hasGraph]);
+  }, [view, level, hasGraph]);
 
   return (
     <>
@@ -331,10 +436,12 @@ export default function DocumentGraph() {
                 ref={fgRef}
                 width={graphSize.width}
                 height={graphSize.height}
-                graphData={level == null ? clusterGraph : docGraph}
+                graphData={
+                  view === "map" ? clusterGraph : view === "all" ? allDocGraph : docGraph
+                }
                 backgroundColor="rgba(255,255,255,0)"
                 nodeLabel={(n: any) =>
-                  level == null
+                  view === "map"
                     ? `${n.name} — ${n.doc_count} dokumen`
                     : n.filename
                 }
@@ -344,7 +451,7 @@ export default function DocumentGraph() {
                   const id = Number(n.id);
                   // Redupkan yang bukan node fokus / tetangganya → struktur terbaca.
                   const dim = focusId != null && id !== focusId && !(neighborIds?.has(id));
-                  if (level == null) {
+                  if (view === "map") {
                     // Bubble klaster.
                     const r = 16 + Math.min(n.doc_count ?? 1, 45) / 1.5;
                     if (dim) ctx.globalAlpha = 0.2;
@@ -376,11 +483,15 @@ export default function DocumentGraph() {
                     return;
                   }
                   // Dokumen: disc warna + label. Ukuran ∝ jumlah relasi (derajat).
-                  const r = 4 + Math.min(degree.get(id) ?? 1, 30) / 2;
+                  // Mode "Semua Dokumen": warna per klaster; drilldown: warna tipe file.
+                  const r = docRadius(n, view === "all" ? degreeAll : degree);
                   if (dim) ctx.globalAlpha = 0.2;
                   ctx.beginPath();
                   ctx.arc(x, y, r, 0, 2 * Math.PI);
-                  ctx.fillStyle = nodeColor(n.file_type);
+                  ctx.fillStyle =
+                    view === "all"
+                      ? (CLUSTER_COLOR[n.cluster as number] ?? DEFAULT_NODE_COLOR)
+                      : nodeColor(n.file_type);
                   ctx.fill();
                   ctx.lineWidth = 1.5;
                   ctx.strokeStyle = "#ffffff";
@@ -416,7 +527,7 @@ export default function DocumentGraph() {
                   const x = n.x ?? 0;
                   const y = n.y ?? 0;
                   ctx.beginPath();
-                  ctx.arc(x, y, level == null ? 22 : 12, 0, 2 * Math.PI);
+                  ctx.arc(x, y, view === "map" ? 22 : 12, 0, 2 * Math.PI);
                   ctx.fillStyle = color;
                   ctx.fill();
                 }}
@@ -429,7 +540,7 @@ export default function DocumentGraph() {
                   return edgeColor(l as GraphEdge);
                 }}
                 linkWidth={(l: any) =>
-                  level == null
+                  view === "map"
                     ? clusterEdgeWidth(l as GraphEdge)
                     : edgeWidth(l as GraphEdge)
                 }
@@ -438,7 +549,7 @@ export default function DocumentGraph() {
                   if (l.semantic != null) parts.push(`Kemiripan ${Number(l.semantic).toFixed(2)}`);
                   if ((l.citations ?? 0) > 0) parts.push(`${l.citations}× dikutip bersama`);
                   const pair = parts.join(" · ");
-                  if (level == null) {
+                  if (view === "map") {
                     const a = clusters.find((c) => c.id === Number(l.source))?.name ?? "";
                     const b = clusters.find((c) => c.id === Number(l.target))?.name ?? "";
                     return pair ? `${a} ↔ ${b}\n${pair}` : `${a} ↔ ${b}`;
@@ -451,6 +562,10 @@ export default function DocumentGraph() {
                 // nodeCanvasObject/linkColor (hover dim) tak pernah digambar ulang.
                 autoPauseRedraw={false}
                 d3VelocityDecay={0.35}
+                // Engine stop default = 15s (cooldownTime) → fit-to-view selalu telat
+                // 15 detik. Turunkan agar layout membingkai diri ~4s setelah data/level
+                // berubah (d3AlphaMin default 0, jadi cooldownTime satu-satunya penghenti).
+                cooldownTime={4000}
                 onNodeHover={(n: any) => setHovered(n == null ? null : Number(n.id))}
                 onEngineStop={() => {
                   if (pendingFit.current) {
@@ -459,9 +574,10 @@ export default function DocumentGraph() {
                   }
                 }}
                 onNodeClick={(n: any) => {
-                  if (level == null) {
+                  if (view === "map") {
                     setSelected(null);
                     setLevel(Number(n.id));
+                    setView("cluster");
                   } else {
                     setSelected(Number(n.id));
                   }
@@ -470,20 +586,43 @@ export default function DocumentGraph() {
               />
             )}
 
-            {/* Breadcrumb saat di dalam klaster */}
-            {hasGraph && level != null && (
+            {/* Breadcrumb kembali ke peta klaster */}
+            {hasGraph && view !== "map" && (
               <button
-                onClick={() => setLevel(null)}
+                onClick={() => {
+                  setView("map");
+                  setLevel(null);
+                  setSelected(null);
+                }}
                 className="absolute left-4 top-4 z-10 flex items-center gap-1.5 rounded-lg border border-white/60 bg-white/85 px-3 py-2 text-xs font-bold text-slate-700 shadow-lg backdrop-blur hover:bg-white"
               >
-                Semua Klaster <span className="text-slate-400">▸</span>
-                <span style={{ color: CLUSTER_COLOR[level] }}>{activeCluster?.name}</span>
+                {view === "all" ? (
+                  <>
+                    Semua Klaster <span className="text-slate-400">▸</span> Semua Dokumen
+                  </>
+                ) : (
+                  <>
+                    Semua Klaster <span className="text-slate-400">▸</span>
+                    <span style={{ color: CLUSTER_COLOR[level ?? 1] }}>{activeCluster?.name}</span>
+                  </>
+                )}
               </button>
             )}
 
             {/* Toolbar kaca mengambang */}
             {hasGraph && (
               <div className="absolute bottom-4 left-4 z-20 flex flex-wrap items-center gap-3 rounded-xl border border-white/60 bg-white/85 px-4 py-3 shadow-lg backdrop-blur">
+                <button
+                  onClick={() => {
+                    setView(view === "map" ? "all" : "map");
+                    setSelected(null);
+                    setLevel(null);
+                  }}
+                  className="rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs font-bold text-slate-700 hover:bg-slate-100"
+                >
+                  {view === "map" ? "Semua Dokumen" : "Peta Klaster"}
+                </button>
+                <span className="h-4 w-px bg-slate-200" />
                 <label className="flex cursor-pointer items-center gap-1.5 text-xs font-bold text-slate-700">
                   <input
                     type="checkbox"
@@ -502,7 +641,7 @@ export default function DocumentGraph() {
                   <span className="h-2 w-2 rounded-full" style={{ background: C_CIT }} />
                   Dikutip bersama
                 </label>
-                {level != null && (
+                {view !== "map" && (
                   <div className="w-32">
                     <Select value={minSem} onChange={(e) => setMinSem(e.target.value)}>
                       <option value="0.3">Ambang 0.3</option>
@@ -513,7 +652,7 @@ export default function DocumentGraph() {
                     </Select>
                   </div>
                 )}
-                {level != null && (
+                {view !== "map" && (
                   <div className="relative">
                     <input
                       type="text"
@@ -544,9 +683,11 @@ export default function DocumentGraph() {
                   ⓘ
                 </span>
                 <span className="text-[11px] text-slate-400">
-                  {level == null
+                  {view === "map"
                     ? `${clusters.length} klaster · ${clusterEdges.filter(passFilter).length} relasi`
-                    : `${docNodes.length} dokumen · ${docGraph.links.length} relasi`}
+                    : view === "all"
+                      ? `${allDocGraph.nodes.length} dokumen · ${allDocGraph.links.length} relasi`
+                      : `${docNodes.length} dokumen · ${docGraph.links.length} relasi`}
                 </span>
               </div>
             )}
@@ -566,8 +707,15 @@ export default function DocumentGraph() {
                   </span>
                 </div>
                 <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1">
-                  {level == null ? (
+                  {view === "map" ? (
                     <span>ukuran bubble = jumlah dokumen</span>
+                  ) : view === "all" ? (
+                    <>
+                      <span className="flex items-center gap-1">
+                        <span className="h-2 w-2 rounded-full" style={{ background: "#94a3b8" }} /> warna = klaster tematik
+                      </span>
+                      <span>ukuran = jumlah relasi</span>
+                    </>
                   ) : (
                     <>
                       <span className="flex items-center gap-1">
@@ -618,11 +766,12 @@ export default function DocumentGraph() {
         <div className="space-y-4">
           <Card interactive={false}>
             <div className="p-5">
-              {level == null ? (
+              {view === "map" ? (
                 <>
                   <p className="text-sm text-slate-500">
                     Peta {clusters.length} klaster tematik. Hover klaster untuk ringkasan; klik untuk
-                    membuka dokumen dan relasi di dalamnya.
+                    membuka dokumen di dalamnya. Klik "Semua Dokumen" untuk menggabungkan seluruh
+                    dokumen lintas klaster dalam satu jaringan.
                   </p>
                   {hoveredCluster && (
                     <div className="mt-4 rounded-lg border border-slate-100 bg-slate-50 p-3">
@@ -729,10 +878,10 @@ export default function DocumentGraph() {
                   Klik node dokumen untuk melihat detail dan dokumen terkait.
                 </p>
               )}
-              {level != null && topRelations.length > 0 && (
+              {view !== "map" && topRelations.length > 0 && (
                 <div className="mt-5">
                   <p className="mb-2 text-sm font-extrabold text-slate-700">
-                    Relasi Terkuat dalam Klaster
+                    Relasi Terkuat {view === "all" ? "Antar Dokumen" : "dalam Klaster"}
                   </p>
                   <ul className="space-y-2">
                     {topRelations.map((r, i) => (
