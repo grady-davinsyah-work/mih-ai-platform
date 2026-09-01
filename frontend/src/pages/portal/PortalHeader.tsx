@@ -49,7 +49,7 @@ export default function PortalHeader() {
           <nav className="desktop-nav">
             {visibleMenus.map((menu) => renderMenuItem(menu))}
             {isLoggedIn && (
-              <Link to="/playground" className="nav-link">Portal Dokumen</Link>
+              <Link to="/playground" className="nav-link">Agen AI</Link>
             )}
           </nav>
 
@@ -84,7 +84,7 @@ export default function PortalHeader() {
           )}
           {isLoggedIn && (
             <Link to="/playground" className="nav-link" onClick={closeMobile}>
-              Portal Dokumen
+              Agen AI
             </Link>
           )}
           {isLoggedIn ? (

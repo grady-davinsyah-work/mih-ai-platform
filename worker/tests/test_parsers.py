@@ -65,6 +65,43 @@ def test_parse_pdf_blank_flags_ocr(tmp_path):
     assert segs[0].needs_ocr is True
 
 
+def test_parse_pdf_ocr_called_on_blank_page(tmp_path, monkeypatch):
+    p = tmp_path / "c.pdf"
+    make_pdf_blank(p)
+    called = []
+
+    def fake_ocr(pdf_path, page_no):
+        called.append(page_no)
+        return "Hasil OCR halaman satu."
+
+    monkeypatch.setattr("parsers.pdf._ocr_page", fake_ocr)
+    segs = parse_pdf(p, ocr=True)
+    assert called == [1]
+    assert "Hasil OCR" in segs[0].text
+    assert segs[0].needs_ocr is False
+
+
+def test_parse_pdf_ocr_disabled_marks_needs_ocr(tmp_path):
+    p = tmp_path / "d.pdf"
+    make_pdf_blank(p)
+    segs = parse_pdf(p, ocr=False)
+    assert segs[0].needs_ocr is True
+
+
+def test_parse_document_passes_ocr_flag(tmp_path, monkeypatch):
+    from parsers import parse_document
+
+    p = tmp_path / "e.pdf"
+    make_pdf_blank(p)
+
+    def fake_ocr(pdf_path, page_no):
+        return "teks hasil OCR"
+
+    monkeypatch.setattr("parsers.pdf._ocr_page", fake_ocr)
+    segs = parse_document(p, "pdf", ocr=True)
+    assert "teks hasil OCR" in segs[0].text
+
+
 def test_parse_docx_grouped_by_heading(tmp_path):
     p = tmp_path / "c.docx"
     make_docx(p)

@@ -72,3 +72,68 @@ test("non-admin cannot access admin endpoints", async () => {
   const res = await request(app).get("/api/admin/users").set("Cookie", staffCookie);
   expect(res.status).toBe(403);
 });
+
+test("admin can update user", async () => {
+  const list = await request(app).get("/api/admin/users").set("Cookie", cookie);
+  const staf = list.body.find((u: any) => u.email === "staf@x.c");
+  const res = await request(app)
+    .put(`/api/admin/users/${staf.id}`)
+    .set("Cookie", cookie)
+    .send({ name: "Staf Baru", unit_kerja: "Subdit Baru", is_admin: true });
+  expect(res.status).toBe(200);
+  expect(res.body.name).toBe("Staf Baru");
+  expect(res.body.unit_kerja).toBe("Subdit Baru");
+  expect(res.body.is_admin).toBe(true);
+  // kembalikan ke semula agar test lain (login staf) tetap valid
+  await request(app)
+    .put(`/api/admin/users/${staf.id}`)
+    .set("Cookie", cookie)
+    .send({ name: "Staf", unit_kerja: "Uji", is_admin: false });
+});
+
+test("admin can reset password", async () => {
+  const created = await request(app)
+    .post("/api/admin/users")
+    .set("Cookie", cookie)
+    .send({ name: "Pw", email: "pw@x.c", unit_kerja: "x", password: "lama123", is_admin: false });
+  expect(created.status).toBe(201);
+  const reset = await request(app)
+    .put(`/api/admin/users/${created.body.id}`)
+    .set("Cookie", cookie)
+    .send({ password: "baru123" });
+  expect(reset.status).toBe(200);
+  const login = await request(app).post("/api/auth/login").send({ email: "pw@x.c", password: "baru123" });
+  expect(login.status).toBe(200);
+});
+
+test("cannot demote own admin role", async () => {
+  const me = await request(app).get("/api/auth/me").set("Cookie", cookie);
+  const res = await request(app)
+    .put(`/api/admin/users/${me.body.user.id}`)
+    .set("Cookie", cookie)
+    .send({ is_admin: false });
+  expect(res.status).toBe(200);
+  expect(res.body.is_admin).toBe(true);
+});
+
+test("admin can delete user", async () => {
+  const created = await request(app)
+    .post("/api/admin/users")
+    .set("Cookie", cookie)
+    .send({ name: "Hapus", email: "hapus@x.c", unit_kerja: "x", password: "pw", is_admin: false });
+  const res = await request(app).delete(`/api/admin/users/${created.body.id}`).set("Cookie", cookie);
+  expect(res.status).toBe(200);
+  const list = await request(app).get("/api/admin/users").set("Cookie", cookie);
+  expect(list.body.some((u: any) => u.email === "hapus@x.c")).toBe(false);
+});
+
+test("cannot delete own account", async () => {
+  const me = await request(app).get("/api/auth/me").set("Cookie", cookie);
+  const res = await request(app).delete(`/api/admin/users/${me.body.user.id}`).set("Cookie", cookie);
+  expect(res.status).toBe(400);
+});
+
+test("delete missing user returns 404", async () => {
+  const res = await request(app).delete("/api/admin/users/999999").set("Cookie", cookie);
+  expect(res.status).toBe(404);
+});

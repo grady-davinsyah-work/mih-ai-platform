@@ -7,6 +7,15 @@ def test_split_sentences_basic():
     assert split_sentences(text) == ["Kalimat pertama.", "Kalimat kedua!", "Kalimat ketiga?"]
 
 
+def test_nul_bytes_dibuang_dari_chunk():
+    # PostgreSQL menolak NUL byte; beberapa PDF kotor menyisipkannya.
+    seg = Segment(text="Teks normal.\x00 Teks dengan NUL tersembunyi\x00.",
+                  page_or_slide=1, section_title="x")
+    chunks = chunk_segments([seg])
+    assert chunks
+    assert "\x00" not in "".join(c.text for c in chunks)
+
+
 def test_chunk_size_within_max():
     seg = Segment(text=" ".join(["Ini adalah kalimat pengisi untuk menguji chunking dokumen kedeputian."] * 200),
                   page_or_slide=1, section_title="Bab 1")

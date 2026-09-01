@@ -1,9 +1,10 @@
 import { pool } from "../db";
 import { config } from "../config";
-import { generateAnswer, streamAnswer } from "./llm";
+import { generateAnswer, streamAnswer, type ChatTurn } from "./llm";
 import { embedTexts } from "./embeddings";
 
 export interface Citation {
+  label: number;
   document_id: number;
   filename: string;
   file_type: string;
@@ -20,6 +21,12 @@ export interface SearchRow {
   label: number;
 }
 
+export interface SearchResult {
+  labeled: SearchRow[];
+  context: string;
+  isComparison: boolean;
+}
+
 export function extractCitedIndices(answer: string): Set<number> {
   const set = new Set<number>();
   const re = /\[(\d+)\]/g;
@@ -28,35 +35,175 @@ export function extractCitedIndices(answer: string): Set<number> {
   return set;
 }
 
-export async function search(question: string): Promise<{ labeled: SearchRow[]; context: string }> {
-  const [qv] = await embedTexts([question]);
-  const { rows } = await pool.query(
-    `SELECT c.id, c.content, c.page_or_slide, c.section_title,
-            d.id AS document_id, d.filename, d.file_type
-       FROM chunks c JOIN documents d ON d.id = c.document_id
-      WHERE c.is_outdated = FALSE AND d.status = 'completed'
-      ORDER BY c.embedding <=> $1::vector
-      LIMIT $2`,
-    [JSON.stringify(qv), config.vectorK]
-  );
-  const labeled = rows.map((r, i) => ({ ...r, label: i + 1 }));
-  const context = labeled
-    .map((r) =>
-      `[${r.label}] (File: ${r.filename}, ${r.file_type}` +
-      (r.page_or_slide != null ? `, halaman/slide ${r.page_or_slide}` : "") +
-      (r.section_title ? `, Bagian: ${r.section_title}` : "") + `)\n${r.content}`
-    )
-    .join("\n\n---\n\n");
-  return { labeled, context };
+// Deteksi pertanyaan perbandingan/ber-entities ganda agar retriever
+// mengambil konteks dari KEDUA sisi (mis. "RKP 2026 dan 2027").
+const COMPARISON_RE =
+  /(?:perbandingan|bandingkan|membandingkan|dibanding(?:kan)?|vs\.?|versus|perbedaan|selisih)/i;
+
+export function extractYears(question: string): Set<number> {
+  const set = new Set<number>();
+  for (const m of question.matchAll(/\b(19|20)\d{2}\b/g)) set.add(Number(m[0]));
+  return set;
 }
 
-export async function ask(question: string): Promise<{ answer: string; citations: Citation[] }> {
-  const { labeled, context } = await search(question);
-  const answer = await generateAnswer(question, context);
+export function isComparisonQuery(question: string): boolean {
+  return COMPARISON_RE.test(question) || extractYears(question).size >= 2;
+}
+
+// Augmentasi query retrieval dengan pertanyaan user terakhir dari history.
+// Follow-up yang referensial ("jelaskan poin kedua") kehilangan konteks dokumen
+// bila hanya di-embed sendirian; menggabungkannya dengan pertanyaan sebelumnya
+// membuat retrieval tetap mengarah ke dokumen yang sama dengan turn awal.
+export function buildRetrievalQuery(question: string, history: ChatTurn[]): string {
+  const lastUser = [...history].reverse().find((t) => t.role === "user");
+  if (!lastUser) return question;
+  return `${question} ${lastUser.content}`;
+}
+
+function capPerDocument(rows: any[], maxPerDoc: number): any[] {
+  const perDoc = new Map<number, number>();
+  const out: any[] = [];
+  for (const r of rows) {
+    const doc = Number(r.document_id);
+    const n = perDoc.get(doc) ?? 0;
+    if (n < maxPerDoc) {
+      out.push(r);
+      perDoc.set(doc, n + 1);
+    }
+  }
+  return out;
+}
+
+export function buildContext(labeled: SearchRow[], groupByDocument: boolean): string {
+  if (!groupByDocument) {
+    return labeled
+      .map((r) =>
+        `[${r.label}] (File: ${r.filename}, ${r.file_type}` +
+        (r.page_or_slide != null ? `, halaman/slide ${r.page_or_slide}` : "") +
+        (r.section_title ? `, Bagian: ${r.section_title}` : "") + `)\n${r.content}`
+      )
+      .join("\n\n---\n\n");
+  }
+  // Kelompokkan per dokumen agar LLM jelas mana chunk dari dokumen mana
+  // (kritis untuk pertanyaan perbandingan). Nomor [n] tetap berurutan.
+  const groups = new Map<number, { filename: string; file_type: string; rows: SearchRow[] }>();
+  for (const r of labeled) {
+    let g = groups.get(r.document_id);
+    if (!g) {
+      g = { filename: r.filename, file_type: r.file_type, rows: [] };
+      groups.set(r.document_id, g);
+    }
+    g.rows.push(r);
+  }
+  const parts: string[] = [];
+  let groupIdx = 0;
+  for (const g of groups.values()) {
+    groupIdx++;
+    parts.push(`=== Dokumen ${groupIdx}: ${g.filename} (${g.file_type}) ===`);
+    for (const r of g.rows) {
+      parts.push(
+        `[${r.label}]` +
+        (r.page_or_slide != null ? ` (halaman/slide ${r.page_or_slide})` : "") +
+        (r.section_title ? ` (Bagian: ${r.section_title})` : "") +
+        `\n${r.content}`
+      );
+    }
+  }
+  return parts.join("\n\n---\n\n");
+}
+
+const RAG_WEBHOOK_TIMEOUT_MS = 30_000;
+
+async function searchLocal(question: string): Promise<{ labeled: SearchRow[]; context: string }> {
+  const [qv] = await embedTexts([question]);
+  const SELECT = `SELECT c.id, c.content, c.page_or_slide, c.section_title,
+                         d.id AS document_id, d.filename, d.file_type
+                    FROM chunks c JOIN documents d ON d.id = c.document_id
+                   WHERE c.is_outdated = FALSE AND d.status = 'completed'`;
+  let rows: any[];
+  if (isComparisonQuery(question)) {
+    // Perbandingan: cari lebih luas, ragamkan per dokumen, lalu jamin tiap
+    // tahun/entitas yang disebut (mis. RKP 2026 & 2027) punya chunk sendiri.
+    const { rows: wide } = await pool.query(
+      `${SELECT} ORDER BY c.embedding <=> $1::vector LIMIT $2`,
+      [JSON.stringify(qv), config.vectorK + 6]
+    );
+    rows = capPerDocument(wide, 5);
+    const seen = new Set<number>(rows.map((r) => r.id));
+    for (const year of extractYears(question)) {
+      const { rows: docs } = await pool.query(
+        `SELECT id FROM documents
+          WHERE status = 'completed' AND filename ILIKE '%' || $1::text || '%' LIMIT 3`,
+        [String(year)]
+      );
+      for (const d of docs) {
+        const { rows: extra } = await pool.query(
+          `${SELECT} AND c.document_id = $2 ORDER BY c.embedding <=> $1::vector LIMIT 2`,
+          [JSON.stringify(qv), d.id]
+        );
+        for (const r of extra) if (!seen.has(r.id)) {
+          seen.add(r.id);
+          rows.push(r);
+        }
+      }
+    }
+    rows = rows.slice(0, config.vectorK + 2 * extractYears(question).size);
+  } else {
+    const { rows: top } = await pool.query(
+      `${SELECT} ORDER BY c.embedding <=> $1::vector LIMIT $2`,
+      [JSON.stringify(qv), config.vectorK]
+    );
+    rows = top;
+  }
+  const labeled = rows.map((r, i) => ({ ...r, label: i + 1 }));
+  const isComparison = isComparisonQuery(question);
+  const context = buildContext(labeled, isComparison);
+  return { labeled, context, isComparison };
+}
+
+export async function searchViaWebhook(question: string): Promise<SearchResult> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), RAG_WEBHOOK_TIMEOUT_MS);
+  try {
+    const resp = await fetch(config.ragWebhookUrl, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ question, vector_k: config.vectorK }),
+      signal: controller.signal,
+    });
+    if (!resp.ok) throw new Error(`n8n rag webhook HTTP ${resp.status}`);
+    const data = (await resp.json()) as { labeled?: SearchRow[]; context?: string };
+    if (!Array.isArray(data.labeled) || typeof data.context !== "string")
+      throw new Error("n8n rag webhook: format response tidak valid");
+    return { labeled: data.labeled, context: data.context, isComparison: false };
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+export async function search(question: string, history: ChatTurn[] = []): Promise<SearchResult> {
+  const query = buildRetrievalQuery(question, history);
+  if (config.ragWebhookUrl) {
+    try {
+      return await searchViaWebhook(query);
+    } catch (err) {
+      console.warn("n8n rag webhook gagal, fallback ke query lokal:", (err as Error).message);
+    }
+  }
+  return searchLocal(query);
+}
+
+export async function ask(
+  question: string,
+  history: ChatTurn[] = []
+): Promise<{ answer: string; citations: Citation[] }> {
+  const { labeled, context, isComparison } = await search(question, history);
+  const answer = await generateAnswer(question, context, history, isComparison);
   const cited = extractCitedIndices(answer);
   const citations: Citation[] = labeled
     .filter((r) => cited.has(r.label))
     .map((r) => ({
+      label: r.label,
       document_id: r.document_id,
       filename: r.filename,
       file_type: r.file_type,
@@ -66,10 +213,13 @@ export async function ask(question: string): Promise<{ answer: string; citations
   return { answer, citations };
 }
 
-export async function* askStream(question: string): AsyncGenerator<{ delta: string } | { citations: Citation[] }> {
-  const { labeled, context } = await search(question);
+export async function* askStream(
+  question: string,
+  history: ChatTurn[] = []
+): AsyncGenerator<{ delta: string } | { citations: Citation[] }> {
+  const { labeled, context, isComparison } = await search(question, history);
   let text = "";
-  for await (const delta of streamAnswer(question, context)) {
+  for await (const delta of streamAnswer(question, context, history, isComparison)) {
     text += delta;
     yield { delta };
   }
@@ -77,6 +227,7 @@ export async function* askStream(question: string): AsyncGenerator<{ delta: stri
   const citations: Citation[] = labeled
     .filter((r) => cited.has(r.label))
     .map((r) => ({
+      label: r.label,
       document_id: r.document_id,
       filename: r.filename,
       file_type: r.file_type,

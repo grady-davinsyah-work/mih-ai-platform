@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { api, type ChatEvent, type ChatMessage, type Conversation } from "../api";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
+import { api, type ChatEvent, type ChatMessage, type Citation, type Conversation } from "../api";
 import {
   Button,
   Card,
@@ -14,6 +16,7 @@ export default function Playground() {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [question, setQuestion] = useState("");
   const [streaming, setStreaming] = useState(false);
+  const [skillBusy, setSkillBusy] = useState(false);
   const [error, setError] = useState("");
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [draftId, setDraftId] = useState<number | null>(null);
@@ -97,10 +100,49 @@ export default function Playground() {
     }
   }
 
+  async function buildAndDownloadPptx(content: string) {
+    const resp = await fetch("/api/skills/pptx", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ title: "Rangkuman Jawaban MIH", content }),
+    });
+    if (!resp.ok) throw new Error((await resp.json().catch(() => ({}))).error ?? "gagal membuat pptx");
+    const blob = await resp.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "rangkuman-jawaban-mih.pptx";
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  }
+
   async function send(e?: React.FormEvent) {
     e?.preventDefault();
     const q = question.trim();
-    if (!q || streaming) return;
+    if (!q || streaming || skillBusy) return;
+
+    // Skill via perintah: /pptx ubah jawaban asisten terakhir menjadi presentasi
+    if (q.startsWith("/pptx")) {
+      const lastAssistant = [...messages].reverse().find((m) => m.role === "assistant");
+      if (!lastAssistant?.content) {
+        setError("Belum ada jawaban asisten untuk diubah jadi PPTX.");
+        return;
+      }
+      setQuestion("");
+      setSkillBusy(true);
+      setError("");
+      try {
+        await buildAndDownloadPptx(lastAssistant.content);
+      } catch (err: any) {
+        setError(err.message);
+      } finally {
+        setSkillBusy(false);
+      }
+      return;
+    }
+
     setError("");
     setQuestion("");
     setStreaming(true);
@@ -182,15 +224,15 @@ export default function Playground() {
           <div className="mx-auto flex max-w-3xl items-end gap-2">
             <Textarea
               rows={1}
-              placeholder="Tulis pertanyaan… (Enter untuk kirim, Shift+Enter baris baru)"
+              placeholder="Tulis pertanyaan… (/pptx = ubah jawaban terakhir jadi PPTX)"
               value={question}
               onChange={(e) => setQuestion(e.target.value)}
               onKeyDown={(e) => {
                 if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(); }
               }}
             />
-            <Button variant="primary" onClick={send} disabled={!question.trim() || streaming}>
-              {streaming ? "…" : "Kirim"}
+            <Button variant="primary" onClick={send} disabled={!question.trim() || streaming || skillBusy}>
+              {streaming ? "…" : skillBusy ? "PPTX…" : "Kirim"}
             </Button>
           </div>
         </form>
@@ -210,18 +252,23 @@ function MessageBubble({ message }: { message: ChatMessage }) {
           </div>
         ) : (
           <Card interactive={false} className="p-5">
-            <p className="whitespace-pre-wrap text-[15px] leading-relaxed text-slate-800">
-              {message.content || "…"}
-            </p>
+            <MarkdownContent content={message.content || "…"} citations={message.citations} />
             {message.citations.length > 0 && (
               <div className="mt-4 border-t border-slate-100 pt-3">
                 <p className="text-xs font-semibold text-slate-500">Rujukan</p>
                 <div className="mt-2 space-y-2">
                   {message.citations.map((c, i) => (
                     <p key={i} className="flex items-baseline gap-2 text-sm leading-relaxed text-slate-500">
-                      <CitationPin index={i + 1} />
+                      <CitationPin index={c.label ?? i + 1} />
                       <span>
-                        <span className="font-medium text-slate-800">{c.filename}</span>
+                        <a
+                          href={`/api/documents/${c.document_id}/file`}
+                          download
+                          className="font-medium text-blue-700 hover:underline"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          {c.filename}
+                        </a>
                         {c.page_or_slide != null && <span> — halaman/slide {c.page_or_slide}</span>}
                         {c.section_title && <span> — {c.section_title}</span>}
                       </span>
@@ -245,6 +292,60 @@ function StreamingCursor() {
         <span className="h-2 w-2 animate-bounce rounded-full bg-slate-400 [animation-delay:120ms]" />
         <span className="h-2 w-2 animate-bounce rounded-full bg-slate-400 [animation-delay:240ms]" />
       </div>
+    </div>
+  );
+}
+
+// Ubah penanda [n] di jawaban menjadi tautan ke dokumen sumber (label = nomor di daftar rujukan).
+function linkifyCitations(content: string, citations: Citation[]): string {
+  if (citations.length === 0) return content;
+  const byLabel = new Map<number, Citation>();
+  for (const c of citations) if (c.label != null) byLabel.set(c.label, c);
+  return content.replace(/\[(\d+)\](?!\()/g, (m, n) => {
+    const c = byLabel.get(Number(n));
+    return c ? `[${n}](/api/documents/${c.document_id}/file)` : m;
+  });
+}
+
+function MarkdownContent({ content, citations = [] }: { content: string; citations?: Citation[] }) {
+  return (
+    <div className="prose-chat text-[15px] leading-relaxed text-slate-800">
+      <ReactMarkdown
+        remarkPlugins={[remarkGfm]}
+        components={{
+          h1: (p) => <h1 className="mt-3 mb-2 text-xl font-bold text-slate-900 first:mt-0" {...p} />,
+          h2: (p) => <h2 className="mt-3 mb-2 text-lg font-bold text-slate-900 first:mt-0" {...p} />,
+          h3: (p) => <h3 className="mt-3 mb-1.5 text-base font-semibold text-slate-900 first:mt-0" {...p} />,
+          p: (p) => <p className="mb-3 last:mb-0" {...p} />,
+          ul: (p) => <ul className="mb-3 list-disc pl-5 last:mb-0" {...p} />,
+          ol: (p) => <ol className="mb-3 list-decimal pl-5 last:mb-0" {...p} />,
+          li: (p) => <li className="mb-1" {...p} />,
+          strong: (p) => <strong className="font-bold text-slate-900" {...p} />,
+          em: (p) => <em className="italic" {...p} />,
+          blockquote: (p) => (
+            <blockquote className="mb-3 border-l-4 border-slate-200 pl-4 italic text-slate-500 last:mb-0" {...p} />
+          ),
+          a: (p) => <a className="text-blue-700 underline hover:text-blue-900" {...p} />,
+          code: (p: any) =>
+            p.inline ? (
+              <code className="rounded bg-slate-100 px-1.5 py-0.5 font-mono text-[13px] text-slate-800" {...p} />
+            ) : (
+              <code {...p} />
+            ),
+          pre: (p) => (
+            <pre className="mb-3 overflow-x-auto rounded-lg bg-slate-900 p-3 text-[13px] leading-relaxed text-slate-100 last:mb-0" {...p} />
+          ),
+          table: (p) => (
+            <div className="mb-3 overflow-x-auto last:mb-0">
+              <table className="w-full border-collapse text-sm" {...p} />
+            </div>
+          ),
+          th: (p) => <th className="border border-slate-200 bg-slate-50 px-3 py-1.5 text-left font-bold" {...p} />,
+          td: (p) => <td className="border border-slate-200 px-3 py-1.5" {...p} />,
+        }}
+      >
+        {linkifyCitations(content, citations)}
+      </ReactMarkdown>
     </div>
   );
 }

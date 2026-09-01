@@ -5,6 +5,8 @@ import authRoutes from "./routes/auth";
 import contentRoutes from "./routes/content";
 import adminRoutes from "./routes/admin";
 import chatRoutes from "./routes/chat";
+import documentsRoutes from "./routes/documents";
+import skillsRoutes from "./routes/skills";
 
 export function createApp() {
   const app = express();
@@ -14,6 +16,8 @@ export function createApp() {
   app.use("/api", authRoutes);
   app.use("/api", contentRoutes);
   app.use("/api", chatRoutes);
+  app.use("/api", documentsRoutes);
+  app.use("/api", skillsRoutes);
   app.use("/api/admin", adminRoutes);
   app.get("/health", (_req, res) => res.json({ ok: true }));
   // Express 5 meneruskan error dari handler async ke middleware berikut

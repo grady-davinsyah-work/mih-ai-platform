@@ -4,6 +4,7 @@ import { api, type User } from "./api";
 import Login from "./pages/Login";
 import Playground from "./pages/Playground";
 import Documents from "./pages/Documents";
+import DocumentGraph from "./pages/DocumentGraph";
 import Admin from "./pages/Admin";
 
 import PortalLayout from "./pages/portal/PortalLayout";
@@ -63,7 +64,7 @@ function Topbar() {
           <strong>ID</strong> Indonesia
         </span>
         <span className="ml-auto hidden text-xs text-slate-300 md:block">
-          Portal Dokumen Kedeputian Makro
+          Macro Intelligence Hub (MIH) Kedeputian PMP
         </span>
       </div>
     </div>
@@ -82,14 +83,22 @@ function SiteHeader({ user, onLogout }: { user: User; onLogout: () => void }) {
               Kedeputian Bidang Perencanaan Makro
             </span>
             <span className="block text-xs font-semibold text-blue-900">
-              Portal Dokumen & Playground AI
+              Macro Intelligence Hub (MIH)
             </span>
           </span>
         </Link>
 
         <nav className="hidden items-center gap-7 lg:flex">
           <NavLink to="/playground" className={navClass}>Playground</NavLink>
-          <NavLink to="/documents" className={navClass}>Dokumen</NavLink>
+          <div className="group relative">
+            <button className="text-[15px] font-bold text-slate-700 transition-colors hover:text-blue-900">
+              Dokumen ▾
+            </button>
+            <div className="invisible absolute left-0 top-full z-50 w-56 rounded-lg border border-slate-200 bg-white py-2 opacity-0 shadow-lg transition-all group-hover:visible group-hover:opacity-100">
+              <Link to="/documents" className="block px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-blue-50 hover:text-blue-900">Daftar Dokumen</Link>
+              <Link to="/documents/relasi" className="block px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-blue-50 hover:text-blue-900">Relasi Dokumen</Link>
+            </div>
+          </div>
           {user.is_admin && <NavLink to="/admin" className={navClass}>Admin</NavLink>}
           <div className="group relative">
             <button className="text-[15px] font-bold text-slate-700 transition-colors hover:text-blue-900">
@@ -234,10 +243,11 @@ export default function App() {
         <Route path="/dashboard/:slug" element={<DashboardRoute />} />
       </Route>
 
-      {/* Aplikasi internal (dari header landing via "Portal Dokumen") */}
+      {/* Aplikasi internal (dari header landing via "Agen AI") */}
       <Route element={<InternalLayout user={user} onLogout={handleLogout} />}>
         <Route path="/playground" element={<Playground />} />
         <Route path="/documents" element={<Documents />} />
+        <Route path="/documents/relasi" element={<DocumentGraph />} />
         <Route path="/admin" element={user.is_admin ? <Admin /> : <Navigate to="/playground" />} />
       </Route>
 

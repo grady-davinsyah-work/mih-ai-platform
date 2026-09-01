@@ -12,7 +12,7 @@ export interface DocumentRow {
   created_at: string; updated_at: string;
 }
 export interface Citation {
-  document_id: number; filename: string; file_type: string;
+  label: number; document_id: number; filename: string; file_type: string;
   page_or_slide: number | null; section_title: string | null;
 }
 export interface AskResult { answer: string; citations: Citation[]; }
@@ -34,6 +34,16 @@ export interface ContentItem {
   created_by: number | null;
   created_at: string;
   updated_at: string;
+}
+export interface GraphNode {
+  id: number; filename: string; file_type: string; source: string; chunk_count: number;
+  cluster: number;
+}
+export interface GraphEdge {
+  source: number; target: number; semantic: number | null; citations: number | null;
+}
+export interface GraphCluster {
+  id: number; name: string; doc_count: number; keywords?: string[];
 }
 export interface Conversation {
   id: number;
@@ -74,12 +84,19 @@ export const api = {
   users: () => req<User[]>("/api/admin/users"),
   createUser: (u: { name: string; email: string; unit_kerja: string; password: string; is_admin: boolean }) =>
     req<User>("/api/admin/users", { method: "POST", body: JSON.stringify(u) }),
+  updateUser: (id: number, u: { name: string; email: string; unit_kerja: string; password?: string; is_admin: boolean }) =>
+    req<User>(`/api/admin/users/${id}`, { method: "PUT", body: JSON.stringify(u) }),
+  deleteUser: (id: number) => req<{ ok: boolean }>(`/api/admin/users/${id}`, { method: "DELETE" }),
   tokens: () => req<Token[]>("/api/admin/tokens"),
   createToken: (userId: number, opts: { name?: string; scope?: string; daily_limit?: number }) =>
     req<{ token: string; note: string }>(`/api/admin/users/${userId}/tokens`, { method: "POST", body: JSON.stringify(opts) }),
   revokeToken: (id: number) => req<{ ok: boolean }>(`/api/admin/tokens/${id}/revoke`, { method: "POST" }),
   usageLogs: () => req<any[]>("/api/admin/usage-logs"),
   documents: () => req<DocumentRow[]>("/api/admin/documents"),
+  documentGraph: () =>
+    req<{ clusters: GraphCluster[]; nodes: GraphNode[]; edges: GraphEdge[]; cluster_edges: GraphEdge[] }>(
+      "/api/documents/graph"
+    ),
   uploadDocument: (file: File, fileType?: string) => {
     const fd = new FormData();
     fd.append("file", file);
