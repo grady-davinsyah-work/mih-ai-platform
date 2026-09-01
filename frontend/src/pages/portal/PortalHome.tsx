@@ -26,7 +26,9 @@ export default function PortalHome() {
     else setSlide(index);
   };
 
-  const visibleExternalLinks = externalLinks.filter((l) => l.status === "public" || !!user);
+  const visibleExternalLinks = externalLinks.filter(
+    (l) => l.status === "public" || !!user,
+  );
 
   const scrollLinks = (direction: "prev" | "next") => {
     linksScrollerRef.current?.scrollBy({
@@ -96,11 +98,19 @@ export default function PortalHome() {
       </section>
 
       {/* ===== Embed Iframe Komoditas ===== */}
-      <section className="section" style={{ background: "#f8fafc", paddingTop: 40, paddingBottom: 20 }}>
+      <section
+        className="section"
+        style={{ background: "#f8fafc", paddingTop: 40, paddingBottom: 20 }}
+      >
         <div className="container">
           <div
             className="card"
-            style={{ overflow: "hidden", borderRadius: "var(--radius-lg)", boxShadow: "var(--shadow-sm)", border: "1px solid var(--slate-200)" }}
+            style={{
+              overflow: "hidden",
+              borderRadius: "var(--radius-lg)",
+              boxShadow: "var(--shadow-sm)",
+              border: "1px solid var(--slate-200)",
+            }}
           >
             <iframe
               src="http://tokogd.com/commodity.html"
@@ -114,10 +124,20 @@ export default function PortalHome() {
       </section>
 
       {/* ===== Tautan Luar horizontal ===== */}
-      <section className="section" style={{ background: "white", paddingTop: 20, paddingBottom: 40 }}>
+      <section
+        className="section"
+        style={{ background: "white", paddingTop: 20, paddingBottom: 40 }}
+      >
         <div className="container">
           <div style={{ marginBottom: 24 }}>
-            <h2 style={{ margin: 0, color: "var(--slate-900)", fontSize: "1.6rem", fontWeight: 700 }}>
+            <h2
+              style={{
+                margin: 0,
+                color: "var(--slate-900)",
+                fontSize: "1.6rem",
+                fontWeight: 700,
+              }}
+            >
               Tautan
             </h2>
           </div>
@@ -182,20 +202,90 @@ export default function PortalHome() {
       </section>
 
       {/* ===== Embed EWS Inflasi ===== */}
-      <section className="section" style={{ background: "#f8fafc", paddingTop: 20, paddingBottom: 40 }}>
+      <section
+        className="section"
+        style={{ background: "#f8fafc", paddingTop: 20, paddingBottom: 40 }}
+      >
         <div className="container">
           <div style={{ marginBottom: 24 }}>
-            <h2 style={{ margin: 0, color: "var(--slate-900)", fontSize: "1.6rem", fontWeight: 700 }}>
+            <h2
+              style={{
+                margin: 0,
+                color: "var(--slate-900)",
+                fontSize: "1.6rem",
+                fontWeight: 700,
+              }}
+            >
               Early Warning System Inflasi
             </h2>
           </div>
           <div
             className="card"
-            style={{ overflow: "hidden", borderRadius: "var(--radius-lg)", boxShadow: "var(--shadow-sm)", border: "1px solid var(--slate-200)" }}
+            style={{
+              overflow: "hidden",
+              borderRadius: "var(--radius-lg)",
+              boxShadow: "var(--shadow-sm)",
+              border: "1px solid var(--slate-200)",
+            }}
           >
-            <div style={{ position: "relative", width: "100%", aspectRatio: "16/9", background: "var(--slate-100)" }}>
+            <div
+              style={{
+                position: "relative",
+                width: "100%",
+                aspectRatio: "16/9",
+                background: "var(--slate-100)",
+              }}
+            >
               <iframe
                 src="https://ewsinflasi.bappenas.go.id/inflasi.html"
+                width="100%"
+                height="100%"
+                style={{ border: "none", display: "block" }}
+                allowFullScreen
+                title="EWS Inflasi"
+              />
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ===== Embed Hilirisasi ===== */}
+      <section
+        className="section"
+        style={{ background: "#f8fafc", paddingTop: 20, paddingBottom: 40 }}
+      >
+        <div className="container">
+          <div style={{ marginBottom: 24 }}>
+            <h2
+              style={{
+                margin: 0,
+                color: "var(--slate-900)",
+                fontSize: "1.6rem",
+                fontWeight: 700,
+              }}
+            >
+              Dashboard Hilirisasi
+            </h2>
+          </div>
+          <div
+            className="card"
+            style={{
+              overflow: "hidden",
+              borderRadius: "var(--radius-lg)",
+              boxShadow: "var(--shadow-sm)",
+              border: "1px solid var(--slate-200)",
+            }}
+          >
+            <div
+              style={{
+                position: "relative",
+                width: "100%",
+                aspectRatio: "16/9",
+                background: "var(--slate-100)",
+              }}
+            >
+              <iframe
+                src="https://hilirisasi.tatakelolapmp.workers.dev/Network_Visualizations/Extended_Network/extended_combined_network"
                 width="100%"
                 height="100%"
                 style={{ border: "none", display: "block" }}
@@ -231,7 +321,12 @@ export default function PortalHome() {
                     <img
                       src={pub.image}
                       alt={pub.title}
-                      style={{ width: "100%", height: "100%", objectFit: "cover", transition: "transform 300ms ease" }}
+                      style={{
+                        width: "100%",
+                        height: "100%",
+                        objectFit: "cover",
+                        transition: "transform 300ms ease",
+                      }}
                       loading="lazy"
                     />
                   </div>
@@ -239,16 +334,37 @@ export default function PortalHome() {
                 <div style={{ padding: 18 }}>
                   <p
                     className="eyebrow"
-                    style={{ color: "var(--amber-500)", marginBottom: 8, fontSize: "0.75rem" }}
+                    style={{
+                      color: "var(--amber-500)",
+                      marginBottom: 8,
+                      fontSize: "0.75rem",
+                    }}
                   >
                     {pub.category}
                   </p>
-                  <h3 style={{ fontSize: "1.05rem", fontWeight: 700, lineHeight: 1.4, margin: "0 0 12px 0", color: "var(--slate-900)" }}>
-                    <Link to={`/publikasi/${pub.slug}`} style={{ color: "inherit" }}>
+                  <h3
+                    style={{
+                      fontSize: "1.05rem",
+                      fontWeight: 700,
+                      lineHeight: 1.4,
+                      margin: "0 0 12px 0",
+                      color: "var(--slate-900)",
+                    }}
+                  >
+                    <Link
+                      to={`/publikasi/${pub.slug}`}
+                      style={{ color: "inherit" }}
+                    >
                       {pub.title}
                     </Link>
                   </h3>
-                  <time style={{ display: "block", fontSize: "0.85rem", color: "var(--slate-500)" }}>
+                  <time
+                    style={{
+                      display: "block",
+                      fontSize: "0.85rem",
+                      color: "var(--slate-500)",
+                    }}
+                  >
                     {pub.date}
                   </time>
                 </div>
