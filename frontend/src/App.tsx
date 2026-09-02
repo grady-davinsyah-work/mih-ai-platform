@@ -1,5 +1,13 @@
 import { useEffect, useState } from "react";
-import { Routes, Route, NavLink, Navigate, Link, Outlet, useParams } from "react-router-dom";
+import {
+  Routes,
+  Route,
+  NavLink,
+  Navigate,
+  Link,
+  Outlet,
+  useParams,
+} from "react-router-dom";
 import { api, type User } from "./api";
 import Login from "./pages/Login";
 import Playground from "./pages/Playground";
@@ -12,7 +20,10 @@ import PortalHome from "./pages/portal/PortalHome";
 import PortalDeputy from "./pages/portal/PortalDeputy";
 import PortalUnit from "./pages/portal/PortalUnit";
 import { PortalNews, PortalNewsDetail } from "./pages/portal/PortalNews";
-import { PortalPublication, PortalPublicationDetail } from "./pages/portal/PortalPublication";
+import {
+  PortalPublication,
+  PortalPublicationDetail,
+} from "./pages/portal/PortalPublication";
 import PortalService from "./pages/portal/PortalService";
 import PortalDashboard from "./pages/portal/PortalDashboard";
 import { externalDashboards } from "./data/portal";
@@ -89,17 +100,33 @@ function SiteHeader({ user, onLogout }: { user: User; onLogout: () => void }) {
         </Link>
 
         <nav className="hidden items-center gap-7 lg:flex">
-          <NavLink to="/playground" className={navClass}>Playground</NavLink>
+          <NavLink to="/playground" className={navClass}>
+            Playground
+          </NavLink>
           <div className="group relative">
             <button className="text-[15px] font-bold text-slate-700 transition-colors hover:text-blue-900">
               Dokumen ▾
             </button>
             <div className="invisible absolute left-0 top-full z-50 w-56 rounded-lg border border-slate-200 bg-white py-2 opacity-0 shadow-lg transition-all group-hover:visible group-hover:opacity-100">
-              <Link to="/documents" className="block px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-blue-50 hover:text-blue-900">Daftar Dokumen</Link>
-              <Link to="/documents/relasi" className="block px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-blue-50 hover:text-blue-900">Relasi Dokumen</Link>
+              <Link
+                to="/documents"
+                className="block px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-blue-50 hover:text-blue-900"
+              >
+                Daftar Dokumen
+              </Link>
+              <Link
+                to="/documents/relasi"
+                className="block px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-blue-50 hover:text-blue-900"
+              >
+                Relasi Dokumen
+              </Link>
             </div>
           </div>
-          {user.is_admin && <NavLink to="/admin" className={navClass}>Admin</NavLink>}
+          {user.is_admin && (
+            <NavLink to="/admin" className={navClass}>
+              Admin
+            </NavLink>
+          )}
           <div className="group relative">
             <button className="text-[15px] font-bold text-slate-700 transition-colors hover:text-blue-900">
               Dashboard ▾
@@ -153,9 +180,15 @@ function Footer() {
         <div>
           <h3 className="text-base font-extrabold">Navigasi</h3>
           <div className="mt-4 grid gap-2.5 text-sm">
-            <Link to="/playground" className="text-slate-300 hover:text-white">Playground</Link>
-            <Link to="/documents" className="text-slate-300 hover:text-white">Dokumen</Link>
-            <Link to="/admin" className="text-slate-300 hover:text-white">Admin</Link>
+            <Link to="/playground" className="text-slate-300 hover:text-white">
+              Playground
+            </Link>
+            <Link to="/documents" className="text-slate-300 hover:text-white">
+              Dokumen
+            </Link>
+            <Link to="/admin" className="text-slate-300 hover:text-white">
+              Admin
+            </Link>
           </div>
         </div>
         <div>
@@ -169,7 +202,9 @@ function Footer() {
       </div>
       <div className="border-t border-white/10">
         <div className="container flex flex-wrap justify-between gap-4 py-4 text-sm text-slate-300">
-          <span>© {new Date().getFullYear()} Kedeputian Makro. All rights reserved.</span>
+          <span>
+            © {new Date().getFullYear()} Kedeputian Makro. All rights reserved.
+          </span>
           <span>Developed by PMP</span>
         </div>
       </div>
@@ -178,7 +213,13 @@ function Footer() {
 }
 
 /* Layout aplikasi internal (Playground/Documents/Admin) */
-function InternalLayout({ user, onLogout }: { user: User; onLogout: () => void }) {
+function InternalLayout({
+  user,
+  onLogout,
+}: {
+  user: User;
+  onLogout: () => void;
+}) {
   return (
     <div className="min-h-screen">
       <Topbar />
@@ -192,14 +233,53 @@ function InternalLayout({ user, onLogout }: { user: User; onLogout: () => void }
 }
 
 export default function App() {
+  /* ===Development By Pass Login ===
+  const FRONTEND_ONLY = true;
+
+  const MOCK_USER: User = {
+    id: 1,
+    name: "Admin Preview",
+    email: "admin@localhost",
+    unit_kerja: "Preview",
+    is_admin: true,
+  };
+
+  const [user, setUser] = useState<User | null>(
+    FRONTEND_ONLY ? MOCK_USER : null,
+  );
+
+  const [loading, setLoading] = useState(!FRONTEND_ONLY);
+
+  useEffect(() => {
+    if (FRONTEND_ONLY) return;
+
+    api
+      .me()
+      .then((r) => setUser(r.user))
+      .catch(() => setUser(null))
+      .finally(() => setLoading(false));
+  }, []);
+
+  ==== Development By Pass Login === */
+
+  /* ===Production=== */
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    api.me().then((r) => setUser(r.user)).catch(() => setUser(null)).finally(() => setLoading(false));
+    api
+      .me()
+      .then((r) => setUser(r.user))
+      .catch(() => setUser(null))
+      .finally(() => setLoading(false));
   }, []);
 
-  if (loading) return <div className="flex h-screen items-center justify-center">Memuat…</div>;
+  /* ===== Production === */
+
+  if (loading)
+    return (
+      <div className="flex h-screen items-center justify-center">Memuat…</div>
+    );
 
   /* ===== Guest: landing publik + login ===== */
   if (!user) {
@@ -248,7 +328,10 @@ export default function App() {
         <Route path="/playground" element={<Playground />} />
         <Route path="/documents" element={<Documents />} />
         <Route path="/documents/relasi" element={<DocumentGraph />} />
-        <Route path="/admin" element={user.is_admin ? <Admin /> : <Navigate to="/playground" />} />
+        <Route
+          path="/admin"
+          element={user.is_admin ? <Admin /> : <Navigate to="/playground" />}
+        />
       </Route>
 
       <Route path="*" element={<Navigate to="/" replace />} />

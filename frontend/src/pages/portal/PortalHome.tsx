@@ -249,7 +249,7 @@ export default function PortalHome() {
         </div>
       </section>
 
-      {/* ===== Embed Hilirisasi ===== */}
+      {/* ===== Embed Dashboard Hilirisasi ===== */}
       <section
         className="section"
         style={{ background: "#f8fafc", paddingTop: 20, paddingBottom: 40 }}
@@ -264,7 +264,7 @@ export default function PortalHome() {
                 fontWeight: 700,
               }}
             >
-              Dashboard Hilirisasi
+              Hilirisasi 18 Komoditas Prioritas
             </h2>
           </div>
           <div
@@ -285,12 +285,12 @@ export default function PortalHome() {
               }}
             >
               <iframe
-                src="https://hilirisasi.tatakelolapmp.workers.dev/Network_Visualizations/Extended_Network/extended_combined_network"
+                src="https://hilirisasi.tatakelolapmp.workers.dev"
                 width="100%"
                 height="100%"
                 style={{ border: "none", display: "block" }}
                 allowFullScreen
-                title="EWS Inflasi"
+                title="Hilirisasi 18 Komoditas Prioritas"
               />
             </div>
           </div>
