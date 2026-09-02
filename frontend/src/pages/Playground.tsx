@@ -258,7 +258,7 @@ function MessageBubble({ message }: { message: ChatMessage }) {
                 <p className="text-xs font-semibold text-slate-500">Rujukan</p>
                 <div className="mt-2 space-y-2">
                   {message.citations.map((c, i) => (
-                    <p key={i} className="flex items-baseline gap-2 text-sm leading-relaxed text-slate-500">
+                    <p key={i} id={`cite-${c.label ?? i + 1}`} className="flex items-baseline gap-2 text-sm leading-relaxed text-slate-500 scroll-mt-4">
                       <CitationPin index={c.label ?? i + 1} />
                       <span>
                         <a
@@ -296,18 +296,21 @@ function StreamingCursor() {
   );
 }
 
-// Ubah penanda [n] di jawaban menjadi tautan ke dokumen sumber (label = nomor di daftar rujukan).
+// Ubah penanda [n] di jawaban menjadi anchor link ke daftar rujukan.
 function linkifyCitations(content: string, citations: Citation[]): string {
   if (citations.length === 0) return content;
   const byLabel = new Map<number, Citation>();
   for (const c of citations) if (c.label != null) byLabel.set(c.label, c);
   return content.replace(/\[(\d+)\](?!\()/g, (m, n) => {
-    const c = byLabel.get(Number(n));
-    return c ? `[${n}](/api/documents/${c.document_id}/file)` : m;
+    const num = Number(n);
+    return byLabel.has(num) ? `[${n}](#cite-${num})` : m;
   });
 }
 
 function MarkdownContent({ content, citations = [] }: { content: string; citations?: Citation[] }) {
+  const citeLabels = new Map<number, Citation>();
+  for (const c of citations) if (c.label != null) citeLabels.set(c.label, c);
+
   return (
     <div className="prose-chat text-[15px] leading-relaxed text-slate-800">
       <ReactMarkdown
@@ -325,7 +328,19 @@ function MarkdownContent({ content, citations = [] }: { content: string; citatio
           blockquote: (p) => (
             <blockquote className="mb-3 border-l-4 border-slate-200 pl-4 italic text-slate-500 last:mb-0" {...p} />
           ),
-          a: (p) => <a className="text-blue-700 underline hover:text-blue-900" {...p} />,
+          a: (p) => {
+            const href = (p as any).href ?? "";
+            const citeMatch = /^#cite-(\d+)$/.exec(href);
+            if (citeMatch) {
+              const num = Number(citeMatch[1]);
+              return (
+                <a href={href} className="no-underline" onClick={(e) => { e.preventDefault(); document.getElementById(`cite-${num}`)?.scrollIntoView({ behavior: "smooth", block: "nearest" }); }}>
+                  <CitationPin index={num} />
+                </a>
+              );
+            }
+            return <a className="text-blue-700 underline hover:text-blue-900" {...p} />;
+          },
           code: (p: any) =>
             p.inline ? (
               <code className="rounded bg-slate-100 px-1.5 py-0.5 font-mono text-[13px] text-slate-800" {...p} />
