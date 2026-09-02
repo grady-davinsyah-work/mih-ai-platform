@@ -1,7 +1,14 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import ForceGraph2D from "react-force-graph-2d";
 import { api, type GraphCluster, type GraphEdge, type GraphNode } from "../api";
-import { Badge, Button, Card, ErrorBanner, PageHeader, Select } from "../components/ui";
+import {
+  Badge,
+  Button,
+  Card,
+  ErrorBanner,
+  PageHeader,
+  Select,
+} from "../components/ui";
 
 const TYPE_COLOR: Record<string, string> = {
   paparan: "#1d4ed8",
@@ -37,11 +44,15 @@ function edgeColor(e: GraphEdge): string {
   return "rgba(217,119,6,0.65)";
 }
 function edgeWidth(e: GraphEdge): number {
-  return 0.4 + Math.max((e.semantic ?? 0) * 1.2, Math.min(e.citations ?? 0, 5) * 0.4);
+  return (
+    0.4 + Math.max((e.semantic ?? 0) * 1.2, Math.min(e.citations ?? 0, 5) * 0.4)
+  );
 }
 // Level 1: bobot agregat (jumlah skor) — skala logaritmik agar tak ekstrem tebal.
 function clusterEdgeWidth(e: GraphEdge): number {
-  return 1 + Math.min((e.semantic ?? 0) / 4, 4) + Math.min((e.citations ?? 0) / 2, 3);
+  return (
+    1 + Math.min((e.semantic ?? 0) / 4, 4) + Math.min((e.citations ?? 0) / 2, 3)
+  );
 }
 function truncate(s: string, n: number): string {
   return s.length > n ? s.slice(0, n - 1) + "…" : s;
@@ -52,7 +63,11 @@ function docRadius(n: any, deg: Map<number, number>): number {
 }
 // Force collide sebaris d3.forceCollide: dorong node yang tumpang tindih
 // (jarak pusat < jumlah jari-jari + padding) — kunci anti-tumpuk (pola Hilirisasi).
-function collideForce(getNodes: () => any[], radius: (n: any) => number, pad: number) {
+function collideForce(
+  getNodes: () => any[],
+  radius: (n: any) => number,
+  pad: number,
+) {
   return (alpha: number) => {
     const nodes = getNodes();
     for (let i = 0; i < nodes.length; i++) {
@@ -81,7 +96,7 @@ function boundsForce(
   radius: (n: any) => number,
   w: number,
   h: number,
-  m: number
+  m: number,
 ) {
   return (alpha: number) => {
     const k = 0.15 * alpha;
@@ -127,7 +142,11 @@ export default function DocumentGraph() {
     if (!el) return;
     const measure = () => {
       const r = el.getBoundingClientRect();
-      if (r.width > 0) setGraphSize({ width: Math.round(r.width), height: Math.round(r.height) });
+      if (r.width > 0)
+        setGraphSize({
+          width: Math.round(r.width),
+          height: Math.round(r.height),
+        });
     };
     measure();
     const ro = new ResizeObserver(measure);
@@ -157,17 +176,21 @@ export default function DocumentGraph() {
   // Level 1: node = klaster, link = edge antar-klaster.
   const clusterGraph = useMemo(
     () => ({
-      nodes: clusters.map((c) => ({ id: c.id, name: c.name, doc_count: c.doc_count })),
+      nodes: clusters.map((c) => ({
+        id: c.id,
+        name: c.name,
+        doc_count: c.doc_count,
+      })),
       links: clusterEdges.filter(passFilter),
     }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [clusters, clusterEdges, showSem, showCit, minSemNum]
+    [clusters, clusterEdges, showSem, showCit, minSemNum],
   );
 
   // Level 2: dokumen dalam satu klaster + edge antar mereka.
   const docNodes = useMemo(
     () => (level == null ? [] : nodes.filter((n) => n.cluster === level)),
-    [nodes, level]
+    [nodes, level],
   );
   const docGraph = useMemo(
     () => ({
@@ -177,12 +200,16 @@ export default function DocumentGraph() {
         .filter(
           (e) =>
             docNodes.some((n) => Number(n.id) === Number(e.source)) &&
-            docNodes.some((n) => Number(n.id) === Number(e.target))
+            docNodes.some((n) => Number(n.id) === Number(e.target)),
         )
-        .map((e) => ({ ...e, source: Number(e.source), target: Number(e.target) })),
+        .map((e) => ({
+          ...e,
+          source: Number(e.source),
+          target: Number(e.target),
+        })),
     }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [docNodes, edges, showSem, showCit, minSemNum]
+    [docNodes, edges, showSem, showCit, minSemNum],
   );
 
   // Mode "Semua Dokumen": semua dokumen lintas klaster + semua edge yang lolos
@@ -192,10 +219,14 @@ export default function DocumentGraph() {
       nodes: nodes.map((n) => ({ ...n, id: Number(n.id) })),
       links: edges
         .filter((e) => passFilter(e))
-        .map((e) => ({ ...e, source: Number(e.source), target: Number(e.target) })),
+        .map((e) => ({
+          ...e,
+          source: Number(e.source),
+          target: Number(e.target),
+        })),
     }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [nodes, edges, showSem, showCit, minSemNum]
+    [nodes, edges, showSem, showCit, minSemNum],
   );
 
   // Fokus untuk highlight lingkungan: node hover (atau dokumen terpilih di Level 2).
@@ -203,7 +234,11 @@ export default function DocumentGraph() {
   const neighborIds = useMemo(() => {
     if (focusId == null) return null;
     const links =
-      view === "map" ? clusterGraph.links : view === "all" ? allDocGraph.links : docGraph.links;
+      view === "map"
+        ? clusterGraph.links
+        : view === "all"
+          ? allDocGraph.links
+          : docGraph.links;
     const s = new Set<number>([focusId]);
     for (const l of links as any[]) {
       const a = Number(l.source);
@@ -243,7 +278,9 @@ export default function DocumentGraph() {
       // dengan tarikan lemah + collide agar bubble tak saling tumpuk.
       const radius = (n: any) => 16 + Math.min(n.doc_count ?? 1, 45) / 1.5;
       g.d3Force("charge")?.strength((n: any) => -6 * radius(n));
-      g.d3Force("link")?.distance((l: any) => 100 + Math.min((l.semantic ?? 0) / 4, 40));
+      g.d3Force("link")?.distance(
+        (l: any) => 100 + Math.min((l.semantic ?? 0) / 4, 40),
+      );
       g.d3Force("link")?.strength(0.05);
       g.d3Force("x", null);
       g.d3Force("y", null);
@@ -251,9 +288,18 @@ export default function DocumentGraph() {
       g.d3Force("clusterY", null);
       g.d3Force(
         "bounds",
-        boundsForce(() => graphDataRef.current.nodes, radius, graphSize.width, graphSize.height, 40)
+        boundsForce(
+          () => graphDataRef.current.nodes,
+          radius,
+          graphSize.width,
+          graphSize.height,
+          40,
+        ),
       );
-      g.d3Force("collide", collideForce(() => graphDataRef.current.nodes, radius, 14));
+      g.d3Force(
+        "collide",
+        collideForce(() => graphDataRef.current.nodes, radius, 14),
+      );
     } else if (view === "all") {
       // Mode "Semua Dokumen" — combined network ala Dashboard Hilirisasi.
       // Semua dokumen lintas klaster dalam satu graf: charge kuat + link panjang
@@ -267,40 +313,47 @@ export default function DocumentGraph() {
       // Kolom klaster dihitung dari data memo, bukan g.graphData() — instance
       // graph belum tentu siap saat effect berjalan (lihat g.graphData bukan fungsi).
       const ids = (
-        [...new Set(allDocGraph.nodes.map((n: any) => n.cluster as number))] as number[]
+        [
+          ...new Set(allDocGraph.nodes.map((n: any) => n.cluster as number)),
+        ] as number[]
       ).sort((a, b) => a - b);
       const mX = 70;
       const colX = (c: number) =>
         ids.length <= 1
           ? graphSize.width / 2
-          : (ids.indexOf(c) / (ids.length - 1)) * (graphSize.width - 2 * mX) + mX;
-      g.d3Force(
-        "clusterX",
-        (alpha: number) => {
-          const k = 0.09 * alpha;
-          for (const n of graphDataRef.current.nodes) {
-            const tx = colX(n.cluster as number);
-            n.vx = (n.vx ?? 0) + (tx - (n.x ?? 0)) * k;
-          }
+          : (ids.indexOf(c) / (ids.length - 1)) * (graphSize.width - 2 * mX) +
+            mX;
+      g.d3Force("clusterX", (alpha: number) => {
+        const k = 0.09 * alpha;
+        for (const n of graphDataRef.current.nodes) {
+          const tx = colX(n.cluster as number);
+          n.vx = (n.vx ?? 0) + (tx - (n.x ?? 0)) * k;
         }
-      );
-      g.d3Force(
-        "clusterY",
-        (alpha: number) => {
-          // Stagger dua baris per kolom agar kolom tak jadi satu garis datar.
-          const k = 0.06 * alpha;
-          const h = graphSize.height;
-          for (const n of graphDataRef.current.nodes) {
-            const ty = h / 2 + (((n.cluster as number) % 2 === 0 ? 1 : -1) * h) / 8;
-            n.vy = (n.vy ?? 0) + (ty - (n.y ?? 0)) * k;
-          }
+      });
+      g.d3Force("clusterY", (alpha: number) => {
+        // Stagger dua baris per kolom agar kolom tak jadi satu garis datar.
+        const k = 0.06 * alpha;
+        const h = graphSize.height;
+        for (const n of graphDataRef.current.nodes) {
+          const ty =
+            h / 2 + (((n.cluster as number) % 2 === 0 ? 1 : -1) * h) / 8;
+          n.vy = (n.vy ?? 0) + (ty - (n.y ?? 0)) * k;
         }
-      );
+      });
       g.d3Force(
         "bounds",
-        boundsForce(() => graphDataRef.current.nodes, radius, graphSize.width, graphSize.height, 30)
+        boundsForce(
+          () => graphDataRef.current.nodes,
+          radius,
+          graphSize.width,
+          graphSize.height,
+          30,
+        ),
       );
-      g.d3Force("collide", collideForce(() => graphDataRef.current.nodes, radius, 10));
+      g.d3Force(
+        "collide",
+        collideForce(() => graphDataRef.current.nodes, radius, 10),
+      );
     } else {
       // Level 2 (dokumen satu klaster): spacing standar + collide & bounds
       // agar dokumen tak menumpuk (sebelumnya collide di-null → node bertumpuk).
@@ -314,9 +367,18 @@ export default function DocumentGraph() {
       g.d3Force("clusterY", null);
       g.d3Force(
         "bounds",
-        boundsForce(() => graphDataRef.current.nodes, radius, graphSize.width, graphSize.height, 30)
+        boundsForce(
+          () => graphDataRef.current.nodes,
+          radius,
+          graphSize.width,
+          graphSize.height,
+          30,
+        ),
       );
-      g.d3Force("collide", collideForce(() => graphDataRef.current.nodes, radius, 10));
+      g.d3Force(
+        "collide",
+        collideForce(() => graphDataRef.current.nodes, radius, 10),
+      );
     }
   }, [view, level, graphSize, degree, degreeAll]);
 
@@ -331,9 +393,14 @@ export default function DocumentGraph() {
   // Relasi terkuat untuk panel insight (peta klaster = antar-klaster, selain itu antar-dokumen).
   const topRelations = useMemo(() => {
     const links =
-      view === "map" ? clusterGraph.links : view === "all" ? allDocGraph.links : docGraph.links;
+      view === "map"
+        ? clusterGraph.links
+        : view === "all"
+          ? allDocGraph.links
+          : docGraph.links;
     const nameOf = (id: number) => {
-      if (view === "map") return clusters.find((c) => c.id === id)?.name ?? `#${id}`;
+      if (view === "map")
+        return clusters.find((c) => c.id === id)?.name ?? `#${id}`;
       return nodes.find((n) => Number(n.id) === id)?.filename ?? `#${id}`;
     };
     return (links as GraphEdge[])
@@ -346,10 +413,19 @@ export default function DocumentGraph() {
       }))
       .sort((x, y) => y.score - x.score)
       .slice(0, 5);
-  }, [view, clusterGraph.links, allDocGraph.links, docGraph.links, clusters, nodes]);
+  }, [
+    view,
+    clusterGraph.links,
+    allDocGraph.links,
+    docGraph.links,
+    clusters,
+    nodes,
+  ]);
 
   const hoveredCluster =
-    view === "map" && hovered != null ? clusters.find((c) => c.id === hovered) ?? null : null;
+    view === "map" && hovered != null
+      ? (clusters.find((c) => c.id === hovered) ?? null)
+      : null;
 
   // Ring highlight pencarian hilang setelah beberapa detik.
   useEffect(() => {
@@ -362,22 +438,27 @@ export default function DocumentGraph() {
     setSearch("");
     setSelected(id);
     setFlashId(id);
-    const n = fgRef.current?.graphData().nodes.find((x: any) => Number(x.id) === id);
+    const n = fgRef.current
+      ?.graphData()
+      .nodes.find((x: any) => Number(x.id) === id);
     if (n && n.x != null) fgRef.current?.centerAt(n.x, n.y, 900);
   };
 
   const activeCluster = clusters.find((c) => c.id === level) ?? null;
   const selectedNode = useMemo(
     () => nodes.find((n) => Number(n.id) === selected) ?? null,
-    [nodes, selected]
+    [nodes, selected],
   );
 
   const related = useMemo(() => {
     if (selected == null) return [];
     return edges
-      .filter((e) => Number(e.source) === selected || Number(e.target) === selected)
+      .filter(
+        (e) => Number(e.source) === selected || Number(e.target) === selected,
+      )
       .map((e) => {
-        const otherId = Number(e.source) === selected ? Number(e.target) : Number(e.source);
+        const otherId =
+          Number(e.source) === selected ? Number(e.target) : Number(e.source);
         return {
           doc: nodes.find((n) => Number(n.id) === otherId),
           sem: e.semantic,
@@ -385,16 +466,19 @@ export default function DocumentGraph() {
         };
       })
       .filter(
-        (x): x is { doc: GraphNode; sem: number | null; cit: number | null } => x.doc != null
+        (x): x is { doc: GraphNode; sem: number | null; cit: number | null } =>
+          x.doc != null,
       )
       .sort(
-        (a, b) => Math.max(b.sem ?? 0, b.cit ?? 0) - Math.max(a.sem ?? 0, a.cit ?? 0)
+        (a, b) =>
+          Math.max(b.sem ?? 0, b.cit ?? 0) - Math.max(a.sem ?? 0, a.cit ?? 0),
       );
   }, [selected, edges, nodes]);
 
   const hasGraph = !loading && nodes.length > 0;
   // Cermin graphData aktif agar getter force selalu membaca data terkini.
-  graphDataRef.current = view === "map" ? clusterGraph : view === "all" ? allDocGraph : docGraph;
+  graphDataRef.current =
+    view === "map" ? clusterGraph : view === "all" ? allDocGraph : docGraph;
 
   // Fit-to-view setelah layout menetap (onEngineStop), bukan timer tetap — saat
   // data pertama tiba node masih mengumpul di tengah, fit di 120ms terlalu cepat
@@ -419,7 +503,8 @@ export default function DocumentGraph() {
             ref={graphBoxRef}
             className="relative h-[560px] overflow-hidden"
             style={{
-              backgroundImage: "radial-gradient(circle, #e2e8f0 1px, transparent 1px)",
+              backgroundImage:
+                "radial-gradient(circle, #e2e8f0 1px, transparent 1px)",
               backgroundSize: "22px 22px",
             }}
           >
@@ -437,7 +522,11 @@ export default function DocumentGraph() {
                 width={graphSize.width}
                 height={graphSize.height}
                 graphData={
-                  view === "map" ? clusterGraph : view === "all" ? allDocGraph : docGraph
+                  view === "map"
+                    ? clusterGraph
+                    : view === "all"
+                      ? allDocGraph
+                      : docGraph
                 }
                 backgroundColor="rgba(255,255,255,0)"
                 nodeLabel={(n: any) =>
@@ -450,7 +539,8 @@ export default function DocumentGraph() {
                   const y = n.y ?? 0;
                   const id = Number(n.id);
                   // Redupkan yang bukan node fokus / tetangganya → struktur terbaca.
-                  const dim = focusId != null && id !== focusId && !(neighborIds?.has(id));
+                  const dim =
+                    focusId != null && id !== focusId && !neighborIds?.has(id);
                   if (view === "map") {
                     // Bubble klaster.
                     const r = 16 + Math.min(n.doc_count ?? 1, 45) / 1.5;
@@ -490,7 +580,8 @@ export default function DocumentGraph() {
                   ctx.arc(x, y, r, 0, 2 * Math.PI);
                   ctx.fillStyle =
                     view === "all"
-                      ? (CLUSTER_COLOR[n.cluster as number] ?? DEFAULT_NODE_COLOR)
+                      ? (CLUSTER_COLOR[n.cluster as number] ??
+                        DEFAULT_NODE_COLOR)
                       : nodeColor(n.file_type);
                   ctx.fill();
                   ctx.lineWidth = 1.5;
@@ -535,7 +626,8 @@ export default function DocumentGraph() {
                   if (focusId != null) {
                     const a = Number(l.source);
                     const b = Number(l.target);
-                    if (a !== focusId && b !== focusId) return "rgba(148,163,184,0.08)";
+                    if (a !== focusId && b !== focusId)
+                      return "rgba(148,163,184,0.08)";
                   }
                   return edgeColor(l as GraphEdge);
                 }}
@@ -546,18 +638,26 @@ export default function DocumentGraph() {
                 }
                 linkLabel={(l: any) => {
                   const parts: string[] = [];
-                  if (l.semantic != null) parts.push(`Kemiripan ${Number(l.semantic).toFixed(2)}`);
-                  if ((l.citations ?? 0) > 0) parts.push(`${l.citations}× dikutip bersama`);
+                  if (l.semantic != null)
+                    parts.push(`Kemiripan ${Number(l.semantic).toFixed(2)}`);
+                  if ((l.citations ?? 0) > 0)
+                    parts.push(`${l.citations}× dikutip bersama`);
                   const pair = parts.join(" · ");
                   if (view === "map") {
-                    const a = clusters.find((c) => c.id === Number(l.source))?.name ?? "";
-                    const b = clusters.find((c) => c.id === Number(l.target))?.name ?? "";
+                    const a =
+                      clusters.find((c) => c.id === Number(l.source))?.name ??
+                      "";
+                    const b =
+                      clusters.find((c) => c.id === Number(l.target))?.name ??
+                      "";
                     return pair ? `${a} ↔ ${b}\n${pair}` : `${a} ↔ ${b}`;
                   }
                   return pair || "terhubung";
                 }}
                 linkCurvature={0.2}
-                linkDirectionalParticles={(l: any) => ((l.citations ?? 0) > 0 ? 2 : 0)}
+                linkDirectionalParticles={(l: any) =>
+                  (l.citations ?? 0) > 0 ? 2 : 0
+                }
                 // Tanpa ini, loop repaint berhenti setelah layout menetap dan perubahan
                 // nodeCanvasObject/linkColor (hover dim) tak pernah digambar ulang.
                 autoPauseRedraw={false}
@@ -566,7 +666,9 @@ export default function DocumentGraph() {
                 // 15 detik. Turunkan agar layout membingkai diri ~4s setelah data/level
                 // berubah (d3AlphaMin default 0, jadi cooldownTime satu-satunya penghenti).
                 cooldownTime={4000}
-                onNodeHover={(n: any) => setHovered(n == null ? null : Number(n.id))}
+                onNodeHover={(n: any) =>
+                  setHovered(n == null ? null : Number(n.id))
+                }
                 onEngineStop={() => {
                   if (pendingFit.current) {
                     pendingFit.current = false;
@@ -598,12 +700,15 @@ export default function DocumentGraph() {
               >
                 {view === "all" ? (
                   <>
-                    Semua Klaster <span className="text-slate-400">▸</span> Semua Dokumen
+                    Semua Klaster <span className="text-slate-400">▸</span>{" "}
+                    Semua Dokumen
                   </>
                 ) : (
                   <>
                     Semua Klaster <span className="text-slate-400">▸</span>
-                    <span style={{ color: CLUSTER_COLOR[level ?? 1] }}>{activeCluster?.name}</span>
+                    <span style={{ color: CLUSTER_COLOR[level ?? 1] }}>
+                      {activeCluster?.name}
+                    </span>
                   </>
                 )}
               </button>
@@ -629,7 +734,10 @@ export default function DocumentGraph() {
                     checked={showSem}
                     onChange={(e) => setShowSem(e.target.checked)}
                   />
-                  <span className="h-2 w-2 rounded-full" style={{ background: C_SEM }} />
+                  <span
+                    className="h-2 w-2 rounded-full"
+                    style={{ background: C_SEM }}
+                  />
                   Semantik
                 </label>
                 <label className="flex cursor-pointer items-center gap-1.5 text-xs font-bold text-slate-700">
@@ -638,12 +746,18 @@ export default function DocumentGraph() {
                     checked={showCit}
                     onChange={(e) => setShowCit(e.target.checked)}
                   />
-                  <span className="h-2 w-2 rounded-full" style={{ background: C_CIT }} />
+                  <span
+                    className="h-2 w-2 rounded-full"
+                    style={{ background: C_CIT }}
+                  />
                   Dikutip bersama
                 </label>
                 {view !== "map" && (
                   <div className="w-32">
-                    <Select value={minSem} onChange={(e) => setMinSem(e.target.value)}>
+                    <Select
+                      value={minSem}
+                      onChange={(e) => setMinSem(e.target.value)}
+                    >
                       <option value="0.3">Ambang 0.3</option>
                       <option value="0.4">Ambang 0.4</option>
                       <option value="0.5">Ambang 0.5</option>
@@ -678,7 +792,9 @@ export default function DocumentGraph() {
                 )}
                 <span
                   className="cursor-help text-xs font-bold text-slate-400 hover:text-slate-600"
-                  title={'Skor semantik = kemiripan makna antar dokumen (0–1), dihitung dari embedding teks.\n"Dikutip bersama" = kedua dokumen muncul bersama dalam jawaban AI yang sama.'}
+                  title={
+                    'Skor semantik = kemiripan makna antar dokumen (0–1), dihitung dari embedding teks.\n"Dikutip bersama" = kedua dokumen muncul bersama dalam jawaban AI yang sama.'
+                  }
                 >
                   ⓘ
                 </span>
@@ -697,13 +813,25 @@ export default function DocumentGraph() {
               <div className="absolute bottom-4 right-4 z-10 rounded-xl border border-white/60 bg-white/85 px-3 py-2 text-[11px] text-slate-600 shadow-lg backdrop-blur">
                 <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
                   <span className="flex items-center gap-1.5">
-                    <span className="h-[3px] w-5 rounded" style={{ background: C_SEM }} /> semantik
+                    <span
+                      className="h-[3px] w-5 rounded"
+                      style={{ background: C_SEM }}
+                    />{" "}
+                    semantik
                   </span>
                   <span className="flex items-center gap-1.5">
-                    <span className="h-[3px] w-5 rounded" style={{ background: C_CIT }} /> dikutip bersama
+                    <span
+                      className="h-[3px] w-5 rounded"
+                      style={{ background: C_CIT }}
+                    />{" "}
+                    dikutip bersama
                   </span>
                   <span className="flex items-center gap-1.5">
-                    <span className="h-[3px] w-5 rounded" style={{ background: "#059669" }} /> keduanya
+                    <span
+                      className="h-[3px] w-5 rounded"
+                      style={{ background: "#059669" }}
+                    />{" "}
+                    keduanya
                   </span>
                 </div>
                 <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1">
@@ -712,20 +840,36 @@ export default function DocumentGraph() {
                   ) : view === "all" ? (
                     <>
                       <span className="flex items-center gap-1">
-                        <span className="h-2 w-2 rounded-full" style={{ background: "#94a3b8" }} /> warna = klaster tematik
+                        <span
+                          className="h-2 w-2 rounded-full"
+                          style={{ background: "#94a3b8" }}
+                        />{" "}
+                        warna = klaster tematik
                       </span>
                       <span>ukuran = jumlah relasi</span>
                     </>
                   ) : (
                     <>
                       <span className="flex items-center gap-1">
-                        <span className="h-2 w-2 rounded-full" style={{ background: "#1d4ed8" }} /> paparan
+                        <span
+                          className="h-2 w-2 rounded-full"
+                          style={{ background: "#1d4ed8" }}
+                        />{" "}
+                        paparan
                       </span>
                       <span className="flex items-center gap-1">
-                        <span className="h-2 w-2 rounded-full" style={{ background: "#047857" }} /> laporan
+                        <span
+                          className="h-2 w-2 rounded-full"
+                          style={{ background: "#047857" }}
+                        />{" "}
+                        laporan
                       </span>
                       <span className="flex items-center gap-1">
-                        <span className="h-2 w-2 rounded-full" style={{ background: "#64748b" }} /> lainnya
+                        <span
+                          className="h-2 w-2 rounded-full"
+                          style={{ background: "#64748b" }}
+                        />{" "}
+                        lainnya
                       </span>
                       <span>ukuran = jumlah relasi</span>
                     </>
@@ -769,34 +913,40 @@ export default function DocumentGraph() {
               {view === "map" ? (
                 <>
                   <p className="text-sm text-slate-500">
-                    Peta {clusters.length} klaster tematik. Hover klaster untuk ringkasan; klik untuk
-                    membuka dokumen di dalamnya. Klik "Semua Dokumen" untuk menggabungkan seluruh
-                    dokumen lintas klaster dalam satu jaringan.
+                    Peta {clusters.length} klaster tematik. Hover klaster untuk
+                    ringkasan; klik untuk membuka dokumen di dalamnya. Klik
+                    "Semua Dokumen" untuk menggabungkan seluruh dokumen lintas
+                    klaster dalam satu jaringan.
                   </p>
                   {hoveredCluster && (
                     <div className="mt-4 rounded-lg border border-slate-100 bg-slate-50 p-3">
                       <p className="flex items-center gap-2 text-sm font-extrabold text-slate-900">
                         <span
                           className="h-2.5 w-2.5 rounded-full"
-                          style={{ background: CLUSTER_COLOR[hoveredCluster.id] ?? DEFAULT_NODE_COLOR }}
+                          style={{
+                            background:
+                              CLUSTER_COLOR[hoveredCluster.id] ??
+                              DEFAULT_NODE_COLOR,
+                          }}
                         />
                         {hoveredCluster.name}
                       </p>
                       <p className="mt-0.5 text-xs text-slate-500">
                         {hoveredCluster.doc_count} dokumen
                       </p>
-                      {hoveredCluster.keywords && hoveredCluster.keywords.length > 0 && (
-                        <div className="mt-2 flex flex-wrap gap-1">
-                          {hoveredCluster.keywords.map((k) => (
-                            <span
-                              key={k}
-                              className="rounded-full border border-slate-200 bg-white px-2 py-0.5 text-[10px] font-semibold text-slate-600"
-                            >
-                              {k}
-                            </span>
-                          ))}
-                        </div>
-                      )}
+                      {hoveredCluster.keywords &&
+                        hoveredCluster.keywords.length > 0 && (
+                          <div className="mt-2 flex flex-wrap gap-1">
+                            {hoveredCluster.keywords.map((k) => (
+                              <span
+                                key={k}
+                                className="rounded-full border border-slate-200 bg-white px-2 py-0.5 text-[10px] font-semibold text-slate-600"
+                              >
+                                {k}
+                              </span>
+                            ))}
+                          </div>
+                        )}
                     </div>
                   )}
                   {topRelations.length > 0 && (
@@ -818,11 +968,17 @@ export default function DocumentGraph() {
                             </p>
                             <p className="mt-0.5 text-[11px] text-slate-500">
                               {r.sem != null && (
-                                <span style={{ color: C_SEM }}>semantik {r.sem.toFixed(2)}</span>
+                                <span style={{ color: C_SEM }}>
+                                  semantik {r.sem.toFixed(2)}
+                                </span>
                               )}
-                              {r.sem != null && r.cit != null && <span> · </span>}
+                              {r.sem != null && r.cit != null && (
+                                <span> · </span>
+                              )}
                               {r.cit != null && (
-                                <span style={{ color: C_CIT }}>{r.cit}× dikutip bersama</span>
+                                <span style={{ color: C_CIT }}>
+                                  {r.cit}× dikutip bersama
+                                </span>
                               )}
                             </p>
                           </li>
@@ -841,9 +997,13 @@ export default function DocumentGraph() {
                   </p>
                   <div className="mt-2 flex flex-wrap items-center gap-2">
                     <Badge tone="neutral">{selectedNode.file_type}</Badge>
-                    <Badge tone="completed">{selectedNode.chunk_count} chunk</Badge>
+                    <Badge tone="completed">
+                      {selectedNode.chunk_count} chunk
+                    </Badge>
                   </div>
-                  <p className="mt-2 text-xs text-slate-500">Sumber: {selectedNode.source}</p>
+                  <p className="mt-2 text-xs text-slate-500">
+                    Sumber: {selectedNode.source}
+                  </p>
                   <a href={`/api/documents/${selectedNode.id}/file`} download>
                     <Button variant="secondary" className="mt-4 w-full">
                       Unduh file
@@ -851,10 +1011,15 @@ export default function DocumentGraph() {
                   </a>
                   {related.length > 0 && (
                     <div className="mt-5">
-                      <p className="mb-2 text-sm font-extrabold text-slate-700">Dokumen terkait</p>
+                      <p className="mb-2 text-sm font-extrabold text-slate-700">
+                        Dokumen terkait
+                      </p>
                       <ul className="space-y-2">
                         {related.slice(0, 8).map((r) => (
-                          <li key={r.doc.id} className="rounded-md border border-slate-100 px-3 py-2">
+                          <li
+                            key={r.doc.id}
+                            className="rounded-md border border-slate-100 px-3 py-2"
+                          >
                             <p
                               className="truncate text-xs font-semibold text-slate-800"
                               title={r.doc.filename}
@@ -862,9 +1027,19 @@ export default function DocumentGraph() {
                               {r.doc.filename}
                             </p>
                             <p className="mt-0.5 text-[11px] text-slate-500">
-                              {r.sem != null && <span style={{ color: C_SEM }}>semantik {r.sem.toFixed(2)}</span>}
-                              {r.sem != null && r.cit != null && <span> · </span>}
-                              {r.cit != null && <span style={{ color: C_CIT }}>{r.cit}× dikutip bersama</span>}
+                              {r.sem != null && (
+                                <span style={{ color: C_SEM }}>
+                                  semantik {r.sem.toFixed(2)}
+                                </span>
+                              )}
+                              {r.sem != null && r.cit != null && (
+                                <span> · </span>
+                              )}
+                              {r.cit != null && (
+                                <span style={{ color: C_CIT }}>
+                                  {r.cit}× dikutip bersama
+                                </span>
+                              )}
                               {r.sem == null && r.cit == null && <span>—</span>}
                             </p>
                           </li>
@@ -881,11 +1056,15 @@ export default function DocumentGraph() {
               {view !== "map" && topRelations.length > 0 && (
                 <div className="mt-5">
                   <p className="mb-2 text-sm font-extrabold text-slate-700">
-                    Relasi Terkuat {view === "all" ? "Antar Dokumen" : "dalam Klaster"}
+                    Relasi Terkuat{" "}
+                    {view === "all" ? "Antar Dokumen" : "dalam Klaster"}
                   </p>
                   <ul className="space-y-2">
                     {topRelations.map((r, i) => (
-                      <li key={i} className="rounded-md border border-slate-100 px-3 py-2">
+                      <li
+                        key={i}
+                        className="rounded-md border border-slate-100 px-3 py-2"
+                      >
                         <p
                           className="truncate text-xs font-semibold text-slate-800"
                           title={`${r.a} ↔ ${r.b}`}
@@ -894,11 +1073,15 @@ export default function DocumentGraph() {
                         </p>
                         <p className="mt-0.5 text-[11px] text-slate-500">
                           {r.sem != null && (
-                            <span style={{ color: C_SEM }}>semantik {r.sem.toFixed(2)}</span>
+                            <span style={{ color: C_SEM }}>
+                              semantik {r.sem.toFixed(2)}
+                            </span>
                           )}
                           {r.sem != null && r.cit != null && <span> · </span>}
                           {r.cit != null && (
-                            <span style={{ color: C_CIT }}>{r.cit}× dikutip bersama</span>
+                            <span style={{ color: C_CIT }}>
+                              {r.cit}× dikutip bersama
+                            </span>
                           )}
                         </p>
                       </li>

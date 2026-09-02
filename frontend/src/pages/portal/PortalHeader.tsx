@@ -1,6 +1,10 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { portalImages, portalMenus, type PortalMenuItem } from "../../data/portal";
+import {
+  portalImages,
+  portalMenus,
+  type PortalMenuItem,
+} from "../../data/portal";
 import { usePortalAuth } from "./PortalLayout";
 
 /*
@@ -21,7 +25,9 @@ export default function PortalHeader() {
   const { user, onLogout } = usePortalAuth();
   const isLoggedIn = !!user;
 
-  const visibleMenus = portalMenus.filter((m) => m.status === "public" || isLoggedIn);
+  const visibleMenus = portalMenus.filter(
+    (m) => m.status === "public" || isLoggedIn,
+  );
 
   const closeMobile = () => {
     setMobileOpen(false);
@@ -33,7 +39,13 @@ export default function PortalHeader() {
       <div className="topbar">
         <div className="container topbar-inner">
           <span>{today}</span>
-          <span style={{ width: 1, height: 22, background: "rgba(255,255,255,.22)" }} />
+          <span
+            style={{
+              width: 1,
+              height: 22,
+              background: "rgba(255,255,255,.22)",
+            }}
+          />
           <span className="language-pill">
             <strong>ID</strong> Indonesia
           </span>
@@ -49,13 +61,21 @@ export default function PortalHeader() {
           <nav className="desktop-nav">
             {visibleMenus.map((menu) => renderMenuItem(menu))}
             {isLoggedIn && (
-              <Link to="/playground" className="nav-link">Agen AI</Link>
+              <Link to="/playground" className="nav-link">
+                Agen AI
+              </Link>
             )}
           </nav>
 
           {isLoggedIn ? (
             <div className="flex items-center gap-3">
-              <span style={{ fontSize: "0.85rem", fontWeight: 700, color: "var(--slate-600)" }}>
+              <span
+                style={{
+                  fontSize: "0.85rem",
+                  fontWeight: 700,
+                  color: "var(--slate-600)",
+                }}
+              >
                 {user!.name}
               </span>
               <button onClick={onLogout} className="button primary">
@@ -78,9 +98,12 @@ export default function PortalHeader() {
           </button>
         </div>
 
-        <nav className={`mobile-menu${mobileOpen ? " open" : ""}`} id="mobile-menu">
+        <nav
+          className={`mobile-menu${mobileOpen ? " open" : ""}`}
+          id="mobile-menu"
+        >
           {visibleMenus.map((menu) =>
-            renderMobileItem(menu, closeMobile, openSubmenu, setOpenSubmenu)
+            renderMobileItem(menu, closeMobile, openSubmenu, setOpenSubmenu),
           )}
           {isLoggedIn && (
             <Link to="/playground" className="nav-link" onClick={closeMobile}>
@@ -88,7 +111,13 @@ export default function PortalHeader() {
             </Link>
           )}
           {isLoggedIn ? (
-            <button className="button primary" onClick={() => { closeMobile(); onLogout(); }}>
+            <button
+              className="button primary"
+              onClick={() => {
+                closeMobile();
+                onLogout();
+              }}
+            >
               Logout
             </button>
           ) : (
@@ -98,6 +127,56 @@ export default function PortalHeader() {
           )}
         </nav>
       </header>
+
+      <div className="integrity-marquee">
+        <div className="integrity-marquee-track">
+          <div className="integrity-marquee-content">
+            <span>
+              <strong className="marquee-red">Integritas</strong> dimulai dari
+              diri sendiri. Patuhi{" "}
+              <strong className="marquee-red">disiplin</strong> dan{" "}
+              <strong className="marquee-red">
+                kode etik ASN Kementerian PPN/Bappenas
+              </strong>
+              . Menemukan{" "}
+              <strong className="marquee-red">dugaan penyimpangan</strong> atau{" "}
+              <strong className="marquee-red">benturan kepentingan</strong>?{" "}
+              <strong className="marquee-red">Laporkan</strong> melalui{" "}
+              <strong className="marquee-red">WBS Bappenas</strong>{" "}
+              <a
+                href="https://wbs.bappenas.go.id"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="marquee-link"
+              >
+                (wbs.bappenas.go.id)
+              </a>
+              atau <strong className="marquee-red">SP4N-LAPOR!</strong>{" "}
+              (lapor.go.id).
+            </span>
+          </div>
+
+          {/* Duplicate supaya animasi berjalan terus tanpa jeda */}
+          <div className="integrity-marquee-content" aria-hidden="true">
+            <span>
+              <strong className="marquee-red">Integritas</strong> dimulai dari
+              diri sendiri. Patuhi{" "}
+              <strong className="marquee-red">disiplin</strong> dan{" "}
+              <strong className="marquee-red">
+                kode etik ASN Kementerian PPN/Bappenas
+              </strong>
+              . Menemukan{" "}
+              <strong className="marquee-red">dugaan penyimpangan</strong> atau{" "}
+              <strong className="marquee-red">benturan kepentingan</strong>?{" "}
+              <strong className="marquee-red">Laporkan</strong> melalui{" "}
+              <strong className="marquee-red">WBS Bappenas</strong>{" "}
+              (wbs.bappenas.go.id) atau{" "}
+              <strong className="marquee-red">SP4N-LAPOR!</strong>{" "}
+              (lapor.go.id).
+            </span>
+          </div>
+        </div>
+      </div>
     </>
   );
 }
@@ -113,7 +192,10 @@ function renderMenuItem(menu: PortalMenuItem) {
   return (
     <div key={menu.name} className="dropdown">
       <button className="nav-link">{menu.name} </button>
-      <div className="dropdown-panel" style={{ maxHeight: 450, overflowY: "auto" }}>
+      <div
+        className="dropdown-panel"
+        style={{ maxHeight: 450, overflowY: "auto" }}
+      >
         <div className="dropdown-title">
           <strong>{menu.name}</strong>
           <p style={{ margin: "4px 0 0", color: "#dbeafe" }}>
@@ -136,7 +218,7 @@ function renderMobileItem(
   menu: PortalMenuItem,
   close: () => void,
   openSubmenu: string | null,
-  setOpenSubmenu: (name: string | null) => void
+  setOpenSubmenu: (name: string | null) => void,
 ) {
   if (!menu.children) {
     return (
@@ -148,10 +230,16 @@ function renderMobileItem(
   const isOpen = openSubmenu === menu.name;
   return (
     <div key={menu.name}>
-      <button data-mobile-parent={menu.name} onClick={() => setOpenSubmenu(isOpen ? null : menu.name)}>
+      <button
+        data-mobile-parent={menu.name}
+        onClick={() => setOpenSubmenu(isOpen ? null : menu.name)}
+      >
         {menu.name} {isOpen ? "▲" : "v"}
       </button>
-      <div className={`mobile-children${isOpen ? " open" : ""}`} data-mobile-children={menu.name}>
+      <div
+        className={`mobile-children${isOpen ? " open" : ""}`}
+        data-mobile-children={menu.name}
+      >
         {menu.children.map((child) => (
           <Link key={child.path} to={child.path} onClick={close}>
             {child.name}
