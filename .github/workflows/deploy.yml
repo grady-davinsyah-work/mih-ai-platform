@@ -12,7 +12,7 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  deploy:
+  deploy-arthakarya:
     name: Deploy ke Arthakarya (10.2.17.123)
     runs-on: self-hosted
     timeout-minutes: 60
@@ -22,3 +22,16 @@ jobs:
         run: git -C "$HOME/mih" pull --ff-only
       - name: Build & restart stack
         run: bash "$HOME/mih/scripts/deploy.sh"
+
+  deploy-vps:
+    name: Deploy ke VPS publik (vps.arthakarya.id)
+    # Runner VPS didaftarkan --no-default-labels --labels vps, jadi label "vps"
+    # hanya cocok dengan runner ini — job tidak akan mendarat di Arthakarya.
+    runs-on: vps
+    timeout-minutes: 60
+    if: ${{ github.event.workflow_run == null || github.event.workflow_run.conclusion == 'success' }}
+    steps:
+      - name: Perbarui repo di VPS
+        run: git -C "$HOME/mi" pull --ff-only
+      - name: Build & restart stack
+        run: bash "$HOME/mi/scripts/deploy-vps.sh"
