@@ -79,9 +79,10 @@ export function PortalNewsDetail({ slug }: { slug: string }) {
             <p style={{ padding: 22, borderRadius: "var(--radius-lg)", background: "#eff6ff" }}>
               {item.excerpt}
             </p>
-            {item.content.map((paragraph, i) => (
-              <p key={i}>{paragraph}</p>
-            ))}
+            <div
+              className="article-content"
+              dangerouslySetInnerHTML={{ __html: item.content }}
+            />
             {item.gallery?.length ? (
               <div style={{ marginTop: 60 }}>
                 <h2 style={{ marginBottom: 20, color: "var(--slate-900)" }}>📸 Galeri Pelaksanaan</h2>

@@ -78,7 +78,7 @@ CREATE TABLE IF NOT EXISTS content (
   category      TEXT NOT NULL DEFAULT '',
   author        TEXT NOT NULL DEFAULT '',
   date          TEXT NOT NULL DEFAULT '',
-  content       TEXT[] NOT NULL DEFAULT '{}',
+  content       TEXT NOT NULL DEFAULT '',
   document_url  TEXT NOT NULL DEFAULT '',
   document_name TEXT NOT NULL DEFAULT '',
   gallery       TEXT[] NOT NULL DEFAULT '{}',

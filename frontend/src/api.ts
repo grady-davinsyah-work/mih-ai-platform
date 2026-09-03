@@ -26,7 +26,7 @@ export interface ContentItem {
   category: string;
   author: string;
   date: string;
-  content: string[];
+  content: string;
   document_url: string;
   document_name: string;
   gallery: string[];

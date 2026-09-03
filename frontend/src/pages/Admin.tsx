@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import type { FormEvent } from "react";
 import { api, type ContentItem, type Token, type User } from "../api";
+import { RichTextEditor } from "../components/RichTextEditor";
 import {
   Button,
   Card,
@@ -118,7 +119,7 @@ export default function Admin() {
       category: c.category,
       author: c.author,
       date: c.date,
-      contentText: (c.content ?? []).join("\n"),
+      contentText: c.content ?? "",
       document_url: c.document_url,
       document_name: c.document_name,
       galleryText: (c.gallery ?? []).join("\n"),
@@ -140,7 +141,7 @@ export default function Admin() {
         category: contentForm.category,
         author: contentForm.author,
         date: contentForm.date,
-        content: splitLines(contentForm.contentText),
+        content: contentForm.contentText,
         document_url: contentForm.document_url,
         document_name: contentForm.document_name,
         gallery: splitLines(contentForm.galleryText),
@@ -309,8 +310,11 @@ export default function Admin() {
                           </>
                         )}
                         <FField label="Isi" className="sm:col-span-2">
-                          <FTextarea rows={4} placeholder="Satu blok per baris (paragraf / HTML)" value={contentForm.contentText}
-                            onChange={(_, d) => setContentForm({ ...contentForm, contentText: d.value })} />
+                          <RichTextEditor
+                            value={contentForm.contentText}
+                            onChange={(html) => setContentForm({ ...contentForm, contentText: html })}
+                            placeholder="Tulis isi konten di sini..."
+                          />
                         </FField>
                         <FField label="Galeri" className="sm:col-span-2">
                           <FTextarea rows={4} placeholder="Satu URL gambar per baris" value={contentForm.galleryText}

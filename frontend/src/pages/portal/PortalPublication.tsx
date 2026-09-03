@@ -107,9 +107,10 @@ export function PortalPublicationDetail({ slug }: { slug: string }) {
                 Akses Dokumen
               </a>
             </div>
-            {item.content.map((paragraph, i) => (
-              <p key={i}>{paragraph}</p>
-            ))}
+            <div
+              className="article-content"
+              dangerouslySetInnerHTML={{ __html: item.content }}
+            />
           </div>
         </div>
       </section>
