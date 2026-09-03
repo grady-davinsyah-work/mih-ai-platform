@@ -57,11 +57,17 @@ echo "=== $COMPOSE up -d --no-build ==="
 $COMPOSE up -d --no-build
 
 echo "=== verifikasi portal (127.0.0.1:8080) ==="
-# Nginx butuh beberapa detik untuk bind port setelah container start.
-# Jangan sekali coba (bisa HTTP 000); tunggu sampai HTTP 200, maks 60s.
+# Verifikasi UTAMA lewat `docker compose exec` ke dalam container frontend:
+# akurat walau runner CI berjalan di dalam container (localhost != host) dan
+# kebal proxy korporat (tidak lewat jaringan host sama sekali).
+# nginx:alpine punya busybox wget. Fallback: curl dari host dengan proxy dimatikan.
+portal_ok() {
+  $COMPOSE exec -T frontend wget -q -O /dev/null http://127.0.0.1/ 2>/dev/null \
+    || curl -sf --noproxy "*" --max-time 5 -o /dev/null http://127.0.0.1:8080/
+}
 ok=""
 for i in $(seq 1 20); do
-  if curl -sf --noproxy "*" -o /dev/null http://127.0.0.1:8080/; then
+  if portal_ok; then
     ok=1
     echo "portal HTTP 200 (detik ke-$((i * 3)))"
     break
@@ -69,7 +75,9 @@ for i in $(seq 1 20); do
   sleep 3
 done
 if [ -z "$ok" ]; then
-  echo "portal tidak responsif di 127.0.0.1:8080 dalam 60s" >&2
+  echo "portal tidak responsif dalam 60s — status container:" >&2
+  $COMPOSE ps >&2
+  $COMPOSE logs --tail 30 frontend >&2
   exit 1
 fi
 
