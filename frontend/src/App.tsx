@@ -26,7 +26,7 @@ import {
 } from "./pages/portal/PortalPublication";
 import PortalService from "./pages/portal/PortalService";
 import PortalDashboard from "./pages/portal/PortalDashboard";
-import { externalDashboards } from "./data/portal";
+import { externalDashboards, portalImages } from "./data/portal";
 
 const navClass = ({ isActive }: { isActive: boolean }) =>
   `text-[15px] font-bold transition-colors ${
@@ -87,16 +87,8 @@ function SiteHeader({ user, onLogout }: { user: User; onLogout: () => void }) {
   return (
     <header className="sticky top-0 z-50 bg-white shadow-[0_1px_12px_rgba(15,23,42,0.08)]">
       <div className="container flex min-h-[80px] items-center justify-between gap-6">
-        <Link to="/playground" className="flex items-center gap-3">
-          <img src="/favicon.svg" alt="PMP Logo" className="h-11 w-auto" />
-          <span className="leading-tight">
-            <span className="block text-base font-extrabold text-slate-900">
-              Kedeputian Bidang Perencanaan Makro
-            </span>
-            <span className="block text-xs font-semibold text-blue-900">
-              Macro Intelligence Hub (MIH)
-            </span>
-          </span>
+        <Link to="/" className="flex items-center">
+          <img className="logo" src={portalImages.logoDark} alt="PMP Logo" />
         </Link>
 
         <nav className="hidden items-center gap-7 lg:flex">
@@ -233,7 +225,7 @@ function InternalLayout({
 }
 
 export default function App() {
-  /* ===Development By Pass Login ===
+  /* ===Development By Pass Login === 
   const FRONTEND_ONLY = true;
 
   const MOCK_USER: User = {

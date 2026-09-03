@@ -150,9 +150,16 @@ export default function PortalHeader() {
                 className="marquee-link"
               >
                 (wbs.bappenas.go.id)
-              </a>
+              </a>{" "}
               atau <strong className="marquee-red">SP4N-LAPOR!</strong>{" "}
-              (lapor.go.id).
+              <a
+                href="https://lapor.go.id"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="marquee-link"
+              >
+                (lapor.go.id).
+              </a>
             </span>
           </div>
 
