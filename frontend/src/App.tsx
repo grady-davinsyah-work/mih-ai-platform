@@ -88,7 +88,9 @@ function SiteHeader({ user, onLogout }: { user: User; onLogout: () => void }) {
     <header className="sticky top-0 z-50 bg-white shadow-[0_1px_12px_rgba(15,23,42,0.08)]">
       <div className="container flex min-h-[80px] items-center justify-between gap-6">
         <Link to="/" className="flex items-center">
-          <img className="logo" src={portalImages.logoDark} alt="PMP Logo" />
+          {/* Header internal: logo 40px (proporsional terhadap header 80px);
+              jangan pakai class .logo portal (56px) yang terlalu besar. */}
+          <img className="h-10 w-auto" src={portalImages.logoDark} alt="PMP Logo" />
         </Link>
 
         <nav className="hidden items-center gap-7 lg:flex">

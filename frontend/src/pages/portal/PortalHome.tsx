@@ -249,6 +249,56 @@ export default function PortalHome() {
         </div>
       </section>
 
+      {/* ===== Embed Dashboard Hilirisasi — login only ===== */}
+      {user && (
+      <section
+        className="section"
+        style={{ background: "#f8fafc", paddingTop: 20, paddingBottom: 40 }}
+      >
+        <div className="container">
+          <div style={{ marginBottom: 24 }}>
+            <h2
+              style={{
+                margin: 0,
+                color: "var(--slate-900)",
+                fontSize: "1.6rem",
+                fontWeight: 700,
+              }}
+            >
+              Hilirisasi 18 Komoditas Prioritas
+            </h2>
+          </div>
+          <div
+            className="card"
+            style={{
+              overflow: "hidden",
+              borderRadius: "var(--radius-lg)",
+              boxShadow: "var(--shadow-sm)",
+              border: "1px solid var(--slate-200)",
+            }}
+          >
+            <div
+              style={{
+                position: "relative",
+                width: "100%",
+                aspectRatio: "16/9",
+                background: "var(--slate-100)",
+              }}
+            >
+              <iframe
+                src="https://hilirisasi.tatakelolapmp.workers.dev"
+                width="100%"
+                height="100%"
+                style={{ border: "none", display: "block" }}
+                allowFullScreen
+                title="Hilirisasi 18 Komoditas Prioritas"
+              />
+            </div>
+          </div>
+        </div>
+      </section>
+      )}
+
       {/* ===== Publikasi ===== */}
       <section className="section" style={{ background: "white" }}>
         <div className="container">
