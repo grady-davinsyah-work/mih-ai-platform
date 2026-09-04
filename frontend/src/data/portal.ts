@@ -86,7 +86,8 @@ export interface ExternalLink {
         name: "Pelayanan Pendampingan Pengalokasian Anggaran bagi Kementerian/Lembaga",
         description: "Diberikan kepada Kementerian/Lembaga (K/L) dalam menyusun perencanaan dan pengalokasian anggaran.​",
         documents: [
-          { type: "pdf", title: "Pelayanan Pendampingan Pengalokasian Anggaran bagi Kementerian/Lembaga.pdf", url: "https://drive.google.com/file/d/1sJJE9nfmZhY2J8MT6-h0d1eBFP3J4Ug0/preview" }
+          { type: "image", title: "Alur Pelayanan Publik", url: "https://drive.google.com/thumbnail?id=1B_Wr3aqEIJs5XeVqDaldCYMUAMDPv-Kz&sz=w2000" },
+          { type: "image", title: "Survei Kepuasan Masyarakat", url: "https://drive.google.com/thumbnail?id=1vH6KnNu1cFhW1HdU5ieWfjA8lHZzPLvG&sz=w2000" }
         ]
       },
       {
@@ -94,7 +95,8 @@ export interface ExternalLink {
         name: "Konsultasi Arah Kebijakan Nasional bagi Sektor di Daerah",
         description: "Diberikan kepada Pemerintah Daerah/Masyarakat umum/Mahasiswa/Lembaga Non-Pemerintah/Organisasi Masyarakat dalam penyusunan perencanaan Pembangunan daerah agar dapat selaras dengan kebijakan nasional.​",
         documents: [
-          { type: "pdf", title: "Konsultasi Arah Kebijakan Nasional bagi Sektor di Daerah.pdf", url: "https://drive.google.com/file/d/1735p-bKbyXFYt-9TjQLcDIIKqQr7RArT/preview" }
+          { type: "image", title: "Alur Pelayanan Publik", url: "https://drive.google.com/thumbnail?id=1B_Wr3aqEIJs5XeVqDaldCYMUAMDPv-Kz&sz=w2000" },
+          { type: "image", title: "Survei Kepuasan Masyarakat", url: "https://drive.google.com/thumbnail?id=1vH6KnNu1cFhW1HdU5ieWfjA8lHZzPLvG&sz=w2000" }
         ]
       },
       {
@@ -102,7 +104,8 @@ export interface ExternalLink {
         name: "Konsultasi Dokumen Perencanaan Nasional dan Daerah​",
         description: "Jenis layanan ini merupakan pelayanan yang diberikan kepada Kementerian/Lembaga/Pemerintah Daerah/DPRD dalam rangka menyusun atau menyesuaikan dokumen perencanaan nasional dan daerah, yang mencakup Rencana Strategis (Renstra) dan Rencana Kerja (Renja) K/L, serta Rencana Pembangunan Jangka Menengah Daerah (RPJMD) dan Rencana Kerja Pemerintah Daerah (RKPD) Provinsi/Kabupaten/Kota, termasuk penyelarasannya dengan Rencana Pembangunan Jangka Menengah Nasional (RPJMN).​",
         documents: [
-          { type: "pdf", title: "Konsultasi Dokumen Perencanaan Nasional dan Daerah.pdf", url: "https://drive.google.com/file/d/1Efdz6DiGF2Pxy8IhusVjJUuwcw23G6mx/preview" }
+          { type: "image", title: "Alur Pelayanan Publik", url: "https://drive.google.com/thumbnail?id=1B_Wr3aqEIJs5XeVqDaldCYMUAMDPv-Kz&sz=w2000" },
+          { type: "image", title: "Survei Kepuasan Masyarakat", url: "https://drive.google.com/thumbnail?id=1vH6KnNu1cFhW1HdU5ieWfjA8lHZzPLvG&sz=w2000" }
         ]
       },
       {
@@ -110,7 +113,8 @@ export interface ExternalLink {
         name: "Fasilitasi Pendampingan Perencanaan Pembangunan Nasional​",
         description: "Jenis layanan ini merupakan layanan yang diberikan kepada Kementerian/Lembaga, Pemerintah Daerah, DPRD, masyarakat umum, mahasiswa, lembaga nonpemerintah, dan organisasi masyarakat, khususnya dalam rangka mendukung pemahaman serta penjabaran teknis dan substantif mengenai keterkaitan perencanaan pembangunan di tingkat pusat dan daerah.​​",
         documents: [
-          { type: "pdf", title: "Fasilitasi Pendampingan Perencanaan Pembangunan Nasional.pdf", url: "https://drive.google.com/file/d/1I5Xd2vnS4ek-Ivzhta-RMrrpyNocsM-6/preview" }
+          { type: "image", title: "Alur Pelayanan Publik", url: "https://drive.google.com/thumbnail?id=1B_Wr3aqEIJs5XeVqDaldCYMUAMDPv-Kz&sz=w2000" },
+          { type: "image", title: "Survei Kepuasan Masyarakat", url: "https://drive.google.com/thumbnail?id=1vH6KnNu1cFhW1HdU5ieWfjA8lHZzPLvG&sz=w2000" }
         ]
       },
       {
@@ -118,7 +122,8 @@ export interface ExternalLink {
         name: "Fasilitasi Penyusunan Model-Model Pembangunan​​",
         description: "Jenis layanan ini merupakan layanan yang diberikan kepada Kementerian/Lembaga, Pemerintah Daerah, DPRD, masyarakat umum, mahasiswa, lembaga nonpemerintah, dan organisasi masyarakat dalam rangka meningkatkan pemahaman mengenai pengembangan inovasi di bidang perencanaan pembangunan.​​",
         documents: [
-          { type: "pdf", title: "Fasilitasi Penyusunan Model-Model Pembangunan​.pdf", url: "https://drive.google.com/file/d/1hj6fAiHszvooQ7LXkUMxH4XBlLPoV9ru/preview" }
+          { type: "image", title: "Alur Pelayanan Publik", url: "https://drive.google.com/thumbnail?id=1B_Wr3aqEIJs5XeVqDaldCYMUAMDPv-Kz&sz=w2000" },
+          { type: "image", title: "Survei Kepuasan Masyarakat", url: "https://drive.google.com/thumbnail?id=1vH6KnNu1cFhW1HdU5ieWfjA8lHZzPLvG&sz=w2000" }
         ]
       },
       {
@@ -126,7 +131,8 @@ export interface ExternalLink {
         name: "Fasilitasi Penyusunan Rencana Aksi Percepatan Pembangunan Nasional​​",
         description: "Jenis layanan ini merupakan layanan yang diberikan kepada Pemerintah Daerah, DPRD, masyarakat umum, mahasiswa, lembaga nonpemerintah, dan organisasi masyarakat dalam rangka mendukung perumusan kerangka hingga pemantauan rencana aksi pelaksanaan kegiatan percepatan pembangunan nasional, termasuk upaya mengidentifikasi dan mengatasi hambatan (debottlenecking) dalam pelaksanaan pembangunan nasional.​​",
         documents: [
-          { type: "pdf", title: "Fasilitasi Penyusunan Rencana Aksi Percepatan Pembangunan Nasional​.pdf", url: "https://drive.google.com/file/d/19Mc8EVh0-bQyDxz8BqJJEVRHQiGL9Gn4/preview" }
+          { type: "image", title: "Alur Pelayanan Publik", url: "https://drive.google.com/thumbnail?id=1B_Wr3aqEIJs5XeVqDaldCYMUAMDPv-Kz&sz=w2000" },
+          { type: "image", title: "Survei Kepuasan Masyarakat", url: "https://drive.google.com/thumbnail?id=1vH6KnNu1cFhW1HdU5ieWfjA8lHZzPLvG&sz=w2000" }
         ]
       },
       {
@@ -134,7 +140,8 @@ export interface ExternalLink {
         name: "Fasilitasi Kegiatan Tematis Perencanaan Pembangunan Nasional​​",
         description: "Jenis layanan ini merupakan layanan yang diberikan kepada Pemerintah Daerah, DPRD, masyarakat umum, mahasiswa, lembaga nonpemerintah, dan organisasi masyarakat dalam rangka mendukung penyusunan perencanaan pembangunan berbasis tema tertentu agar selaras dengan prioritas pembangunan nasional.​",
         documents: [
-          { type: "pdf", title: "Fasilitasi Kegiatan Tematis Perencanaan Pembangunan Nasional​.pdf", url: "https://drive.google.com/file/d/18EKyVmY9to2V8coSwlYE9jquO3vTu9R6/preview" }
+          { type: "image", title: "Alur Pelayanan Publik", url: "https://drive.google.com/thumbnail?id=1B_Wr3aqEIJs5XeVqDaldCYMUAMDPv-Kz&sz=w2000" },
+          { type: "image", title: "Survei Kepuasan Masyarakat", url: "https://drive.google.com/thumbnail?id=1vH6KnNu1cFhW1HdU5ieWfjA8lHZzPLvG&sz=w2000" }
         ]
       },
       {
@@ -142,7 +149,8 @@ export interface ExternalLink {
         name: "Fasilitasi Pendampingan Perhitungan Indikator Tematik​​",
         description: "Jenis layanan ini merupakan layanan yang diberikan kepada Pemerintah Daerah, DPRD, masyarakat umum, mahasiswa, lembaga nonpemerintah, dan organisasi masyarakat dalam rangka mendukung penyusunan dan perhitungan indikator tematik, seperti Blue Economy, GRK, IMD, dan indikator tematik lainnya dalam perencanaan pembangunan nasional.​​",
         documents: [
-          { type: "pdf", title: "Fasilitasi Pendampingan Perhitungan Indikator Tematik​.pdf", url: "https://drive.google.com/file/d/1jW32Now9UZWwDuJsMc5sQceHYPOrq6Of/preview" }
+          { type: "image", title: "Alur Pelayanan Publik", url: "https://drive.google.com/thumbnail?id=1B_Wr3aqEIJs5XeVqDaldCYMUAMDPv-Kz&sz=w2000" },
+          { type: "image", title: "Survei Kepuasan Masyarakat", url: "https://drive.google.com/thumbnail?id=1vH6KnNu1cFhW1HdU5ieWfjA8lHZzPLvG&sz=w2000" }
         ]
       }
     ];
