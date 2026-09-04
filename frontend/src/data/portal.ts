@@ -293,17 +293,23 @@ export const units: Unit[] = [
         position: "Deputi Bidang Perencanaan Makro Pembangunan",
         email: "chandra@bappenas.go.id",
         image: "chandra",
-        profilPimpinanId: `Dr. Eka Chandra Buana, S.E., M.A. saat ini menjabat sebagai Deputi Bidang Perencanaan Makro Pembangunan, Kementerian PPN/Bappenas, sejak Januari 2025. Sebelumnya, beliau dipercaya sebagai Direktur Perencanaan Makro dan Analisis Statistik pada periode Juli 2018–Januari 2025. Dengan pengalaman panjang di Bappenas sejak 2008, perjalanan karier beliau menunjukkan konsistensi dan pengalaman yang kuat dalam bidang perencanaan pembangunan, analisis ekonomi makro, kebijakan pendanaan pembangunan, serta analisis kebijakan untuk mendukung perumusan pembangunan nasional.<br>
-        <br>Dalam perjalanan profesionalnya, Dr. Eka Chandra Buana telah menduduki berbagai posisi strategis di Bappenas. Sebelum menjabat sebagai Direktur, beliau pernah dipercaya sebagai Plt. Direktur Keuangan Negara dan Analisis Moneter, Kepala Subdirektorat Alokasi Pendanaan Pemerintah Pusat Bidang Ekonomi, Maritim dan Sumber Daya, serta beberapa posisi pada bidang alokasi pendanaan pembangunan pusat dan daerah. Pengalaman tersebut memberikan landasan yang kuat dalam memahami keterkaitan antara perencanaan pembangunan, pengelolaan pendanaan, kebijakan ekonomi, dan pencapaian sasaran pembangunan nasional.<br>
-        <br>Dalam kapasitasnya, beliau memiliki pengalaman dalam mendukung penyusunan perencanaan pembangunan melalui analisis kondisi dan prospek perekonomian, penyusunan kerangka ekonomi makro, serta analisis statistik sebagai basis perumusan kebijakan. Pengalaman tersebut kemudian menjadi fondasi penting dalam menjalankan perannya saat ini sebagai Deputi Bidang Perencanaan Makro Pembangunan yang memiliki posisi strategis dalam proses perumusan arah dan kebijakan pembangunan makro nasional.<br>
-        <br>Latar belakang pendidikannya juga memperkuat kompetensi tersebut. Beliau menyelesaikan studi antara lain
+        profilPimpinanId: `Dr. Eka Chandra Buana, S.E., M.A. lahir di Jakarta pada 30 Mei 1976. Beliau menyelesaikan pendidikan Sarjana Ilmu Ekonomi di Universitas Gadjah Mada pada tahun 1999. Selanjutnya, beliau meraih gelar Master of Economics dari Georgia State University, Amerika Serikat, pada tahun 2002, dan memperoleh gelar Doktor Kepemimpinan dan Inovasi Kebijakan dari Universitas Gadjah Mada pada tahun 2025.<br>
+        <br>Beliau mengawali karier di Kementerian PPN/Bappenas pada tahun 2002 sebagai Kepala Seksi Moneter dan Perbankan. Selanjutnya, beliau menjabat sebagai Perencana Muda, Kepala Subdirektorat Pembiayaan Mikro, Kepala Subdirektorat Alokasi Pendanaan Pembangunan Pemerintah Daerah, Kepala Subdirektorat Alokasi Pendanaan Pembangunan Pusat, Kepala Subdirektorat Alokasi Pendanaan Pemerintah Pusat Bidang Ekonomi, Maritim, dan Sumber Daya, Pelaksana Tugas (Plt.) Direktur Keuangan Negara dan Analisis Moneter, serta Direktur Perencanaan Makro dan Analisis Statistik. Sejak Januari 2025, beliau diamanahkan sebagai Deputi Bidang Perencanaan Makro Pembangunan pada Kementerian Perencanaan Pembangunan Nasional/Badan Perencanaan Pembangunan Nasional (Bappenas) dan menjabat hingga saat ini.<br>
+        <br>Selama menjalankan tugasnya, beliau berkontribusi dalam berbagai kebijakan strategis nasional, antara lain pengembangan konsep Kerangka Ekonomi Makro Daerah (KEMD), koordinasi penyusunan substansi RPJPN 2025–2045, pengembangan Dashboard Data SDGs dan Bappenas Policy Modelling Dashboard, serta sinkronisasi RPJPN dengan RPJPD bersama Kementerian Dalam Negeri. Selain itu, beliau aktif mewakili Indonesia dalam berbagai forum internasional dan saat ini menjabat sebagai Shepherd ASEAN Coordinating Task Force on Blue Economy (ACTF-BE) serta Wakil Ketua I Forum Masyarakat Statistik (FMS).<br>
+        <br>
+        <h3>Penghargaan</h3>
         <ul>
-          <li>S1 Ilmu Ekonomi di Universitas Gadjah Mada (1999)</li>
-          <li>Master of Arts (M.A.) in Economics dari Georgia State University (2002)</li>
-          <li>Doktor bidang Kepemimpinan dan Inovasi Kebijakan Universitas Gadjah Mada (2025)</li>
-        </ul>
-        <br>Kombinasi pendidikan ekonomi, pengalaman panjang dalam birokrasi perencanaan pembangunan, serta kajian mengenai kepemimpinan dan inovasi kebijakan memberikan perspektif yang luas dalam melihat persoalan pembangunan, baik dari sisi ekonomi dan kebijakan maupun dari aspek kelembagaan, kepemimpinan, dan transformasi kebijakan.<br>
-        <br>Dengan rekam jejak tersebut, Dr. Eka Chandra Buana memiliki pengalaman yang kuat dalam menghubungkan analisis ekonomi, perencanaan pembangunan, pendanaan, dan kebijakan publik dalam konteks pembangunan nasional. Perjalanan kariernya dari berbagai posisi teknis di bidang pendanaan pembangunan hingga menjadi Deputi Bidang Perencanaan Makro Pembangunan mencerminkan pengalaman yang luas dalam proses perumusan kebijakan dan perencanaan pembangunan Indonesia.<br>`,
+          <li>Shepherd ASEAN Coordinating Task Force on Blue Economy (ACTF-BE) periode 2024–2027.</li>
+          <li>Wakil Ketua I Forum Masyarakat Statistik (FMS) periode 2025–2026.</li>
+          <li>Ketua Pejabat Pembuat Komitmen (PPK) Kedeputian Ekonomi, tahun 2010.</li>
+          <li>Penerima Satyalancana Wira Karya, tahun 2023.</li>
+          <li>Penerima Satyalancana Karya Satya XX, tahun 2020.</li>
+          <li>Penerima Satyalancana Karya Satya X, tahun 2011.</li>
+          <li>Kepemimpinan Nasional (PKN) Tingkat II Angkatan XVIII, LAN RI Kominfo, tahun 2024.</li>
+          <li>Certified Governance, Risk, and Compliance for Executive (GRCE) dari BNSP, tahun 2023.</li>
+          <li>7th Temasek Foundation Leader in Economic Development Programme, Temasek Foundation dan Civil Service College Singapore, tahun 2021.</li>
+          <li>Nurturing Leadership Programme, Bappenas–Motekar, Bandung, tahun 2019.</li>
+        </ul>`,
         tugasUnitKerjaId: "Deputi Bidang Perencanaan Makro Pembangunan mempunyai tugas menyelenggarakan koordinasi, perumusan kebijakan, sinkronisasi pelaksanaan kebijakan, pemantaian, evaluasi dan pengendalian, serta penyusunan prakarsa strategis pembangunan lintas sektor perencanaan pembangunan nasional di bidang perencanaan makro pembangunan.",
         fungsiUnitKerjaId: `
         Dalam melaksanakan tugas, Deputi menyelenggarakan fungsi:
